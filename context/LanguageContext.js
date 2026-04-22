@@ -34,10 +34,16 @@ export const LanguageProvider = ({ children }) => {
   }, []);
 
   // Memoize the translation function but recreate it when language changes
-  const t = useCallback((key) => {
-    if (!language) return key; // Safety check during loading
-    return translations[language]?.[key] || translations['en']?.[key] || key;
-  }, [language]); // Re-create when language changes
+  const t = useCallback((key, params) => {
+    if (!language) return key;
+    let str = translations[language]?.[key] || translations['en']?.[key] || key;
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      });
+    }
+    return str;
+  }, [language]);
 
   // Memoize the context value to prevent unnecessary re-renders
   // but ensure it updates when language changes

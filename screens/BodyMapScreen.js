@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,8 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
-import Svg, { Circle, Rect, G } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,86 +23,114 @@ import api from '../config/api';
 
 const SESSIONS_GOAL = 6;
 
+const LASER_TYPES = ['Diode', 'Alexandrite'];
+
+const SKIN_TYPES = [
+  { type: 1, color: '#FDDCB5', descKey: 'skinType1' },
+  { type: 2, color: '#E8B88A', descKey: 'skinType2' },
+  { type: 3, color: '#C68642', descKey: 'skinType3' },
+  { type: 4, color: '#8D5524', descKey: 'skinType4' },
+  { type: 5, color: '#4A2410', descKey: 'skinType5' },
+];
+
+// Display dimensions for the body image
+const IMG_W = 200;
+const IMG_H = 460;
+
 // ── Zone definitions ─────────────────────────────────────────────────────────
+// overlays: [{top, left, w, h}] as fractions (0–1) of IMG_W / IMG_H
 const ZONE_CONFIG = [
   {
     id: 'face', label: 'Face', zoneKey: 'zoneFace', front: true,
-    shapes: [{ type: 'circle', cx: 100, cy: 30, r: 24 }],
+    overlays: [{ top: 0.04, left: 0.38, w: 0.23, h: 0.12 }],
+    radius: 40,
     keywords: ['face', 'лице', 'upper lip', 'горна устна', 'chin', 'брада', 'forehead', 'cheek', 'eyebrow', 'facial'],
   },
   {
     id: 'neck', label: 'Neck', zoneKey: 'zoneNeck', front: true,
-    shapes: [{ type: 'rect', x: 88, y: 55, width: 24, height: 16, rx: 7 }],
+    overlays: [{ top: 0.152, left: 0.44, w: 0.12, h: 0.050 }],
+    radius: 8,
     keywords: ['neck', 'врат', 'throat', 'шия'],
   },
   {
     id: 'armpits', label: 'Armpits', zoneKey: 'zoneArmpits', front: true,
-    shapes: [
-      { type: 'circle', cx: 61, cy: 85, r: 8 },
-      { type: 'circle', cx: 139, cy: 85, r: 8 },
+    overlays: [
+      { top: 0.21, left: 0.265, w: 0.1, h: 0.05 },
+      { top: 0.21, left: 0.635, w: 0.1, h: 0.05 },
     ],
+    radius: 12,
     keywords: ['armpit', 'armpits', 'подмишниц', 'underarm'],
   },
   {
     id: 'arms', label: 'Arms', zoneKey: 'zoneArms', front: true, back: true,
-    shapes: [
-      { type: 'rect', x: 36, y: 80, width: 23, height: 62, rx: 11 },
-      { type: 'rect', x: 141, y: 80, width: 23, height: 62, rx: 11 },
+    overlays: [
+      { top: 0.255, left: 0.23, w: 0.1, h: 0.12 },
+      { top: 0.255, left: 0.670, w: 0.1, h: 0.12 },
     ],
+    radius: 14,
     keywords: ['arms', 'ръце', 'arm', 'upper arm', 'whole arm', 'full arm'],
   },
   {
     id: 'half_arms', label: 'Half Arms', zoneKey: 'zoneHalfArms', front: true, back: true,
-    shapes: [
-      { type: 'rect', x: 36, y: 144, width: 23, height: 64, rx: 11 },
-      { type: 'rect', x: 141, y: 144, width: 23, height: 64, rx: 11 },
+    overlays: [
+      { top: 0.375, left: 0.21, w: 0.1, h: 0.14 },
+      { top: 0.375, left: 0.690, w: 0.1, h: 0.14 },
     ],
+    radius: 14,
     keywords: ['half arms', 'половин ръце', 'forearm', 'lower arm', 'half arm'],
   },
   {
     id: 'chest', label: 'Chest', zoneKey: 'zoneChest', front: true,
-    shapes: [{ type: 'rect', x: 67, y: 73, width: 66, height: 52, rx: 12 }],
+    overlays: [{ top: 0.235, left: 0.33, w: 0.35, h: 0.1 }],
+    radius: 14,
     keywords: ['chest', 'гърди', 'breast', 'decolletage'],
   },
   {
     id: 'abdomen', label: 'Abdomen', zoneKey: 'zoneAbdomen', front: true,
-    shapes: [{ type: 'rect', x: 69, y: 127, width: 62, height: 46, rx: 12 }],
+    overlays: [{ top: 0.33, left: 0.35, w: 0.3, h: 0.1 }],
+    radius: 12,
     keywords: ['abdomen', 'корем', 'stomach', 'belly', 'abs'],
   },
   {
     id: 'bikini', label: 'Bikini / Intimate', zoneKey: 'zoneIntimate', front: true,
-    shapes: [{ type: 'rect', x: 81, y: 175, width: 38, height: 22, rx: 11 }],
+    overlays: [{ top: 0.415, left: 0.325, w: 0.35, h: 0.08 }],
+    radius: 10,
     keywords: ['intimat', 'интим', 'bikini', 'бикини', 'brazilian', 'pubic'],
   },
   {
     id: 'legs', label: 'Legs', zoneKey: 'zoneLegs', front: true, back: true,
-    shapes: [
-      { type: 'rect', x: 73, y: 199, width: 25, height: 80, rx: 12 },
-      { type: 'rect', x: 102, y: 199, width: 25, height: 80, rx: 12 },
+    overlays: [
+      { top: 0.455, left: 0.32, w: 0.16, h: 0.185 },
+      { top: 0.455, left: 0.52, w: 0.16, h: 0.185 },
     ],
+    radius: 12,
     keywords: ['legs', 'крака', 'leg', 'thigh', 'whole leg', 'full leg'],
   },
   {
     id: 'half_legs', label: 'Half Legs', zoneKey: 'zoneHalfLegs', front: true, back: true,
-    shapes: [
-      { type: 'rect', x: 73, y: 283, width: 24, height: 168, rx: 12 },
-      { type: 'rect', x: 103, y: 283, width: 24, height: 168, rx: 12 },
+    overlays: [
+      { top: 0.670, left: 0.35, w: 0.12, h: 0.20 },
+      { top: 0.670, left: 0.53, w: 0.12, h: 0.20 },
     ],
+    radius: 12,
     keywords: ['half legs', 'половин крака', 'half leg', 'calf', 'calves', 'shin', 'lower leg'],
   },
   {
     id: 'back', label: 'Back', zoneKey: 'zoneBack', back: true,
-    shapes: [{ type: 'rect', x: 67, y: 73, width: 66, height: 54, rx: 12 }],
+    overlays: [{ top: 0.205, left: 0.337, w: 0.33, h: 0.12 }],
+    radius: 14,
     keywords: ['back', 'гръб', 'upper back'],
   },
   {
     id: 'lower_back', label: 'Lower Back', zoneKey: 'zoneLowerBack', back: true,
-    shapes: [{ type: 'rect', x: 69, y: 129, width: 62, height: 44, rx: 12 }],
+    overlays: [{ top: 0.32, left: 0.36, w: 0.29, h: 0.09 }],
+    radius: 12,
     keywords: ['lower back', 'кръст', 'lumbar'],
   },
   {
     id: 'glutes', label: 'Glutes', zoneKey: 'zoneGlutes', back: true,
-    shapes: [{ type: 'rect', x: 73, y: 175, width: 54, height: 22, rx: 11 }],
+    overlays: [{ top: 0.4, left: 0.33, w: 0.35, h: 0.10 }],
+    radius: 14,
     keywords: ['glute', 'седалищ', 'дупе', 'buttock', 'butt'],
   },
 ];
@@ -138,7 +166,7 @@ const aggregateForZone = (zoneId, zoneProgress) => {
 
   return {
     totalVisits, lastPower,
-    avgPower: parseFloat(avgPower.toFixed(1)),
+    avgPower,
     maxPower, minPower, zoneNames,
     treatments: allTreatments,
   };
@@ -160,6 +188,8 @@ export default function BodyMapScreen({ route, navigation }) {
   const [localProgress, setLocalProgress] = useState(initialProgress);
   const [isFront, setIsFront] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
+  const [faceSubzone, setFaceSubzone] = useState('zoneFace');
+  const [intimateSubzone, setIntimateSubzone] = useState('zoneIntimate');
 
   // ── Add-treatment modal state ──
   const [showAddModal, setShowAddModal] = useState(false);
@@ -168,8 +198,19 @@ export default function BodyMapScreen({ route, navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newZone, setNewZone] = useState('');
   const [newPower, setNewPower] = useState('');
+  const [newPulseWidth, setNewPulseWidth] = useState('');
+  const [newFrequency, setNewFrequency] = useState('');
+  const [newPrice, setNewPrice] = useState('');
   const [newNotes, setNewNotes] = useState('');
+  const [priceList, setPriceList] = useState({});
+  const [selectedTreatment, setSelectedTreatment] = useState(null);
+  const [skinType, setSkinType] = useState(null);
+  const [laserType, setLaserType] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/pricelists').then(res => setPriceList(res.data.prices || {})).catch(() => {});
+  }, []);
 
   const reloadProgress = async () => {
     try {
@@ -183,11 +224,19 @@ export default function BodyMapScreen({ route, navigation }) {
   const openAddModal = () => {
     const zone = selectedId ? ZONE_CONFIG.find(z => z.id === selectedId) : null;
     const data = selectedId ? zoneDataMap[selectedId] : null;
-    setNewZone(zone ? t(zone.zoneKey) : '');
+    const activeZoneKey = selectedId === 'face' ? faceSubzone
+      : selectedId === 'bikini' ? intimateSubzone
+      : zone?.zoneKey;
+    setNewZone(activeZoneKey ? t(activeZoneKey) : '');
     setNewPower(data?.lastPower ? String(data.lastPower) : '');
+    setNewPulseWidth('');
+    setNewFrequency('');
+    setNewPrice(activeZoneKey && priceList[activeZoneKey] ? String(priceList[activeZoneKey]) : '');
     setNewDate(new Date());
     setDateText(formatDateInput(new Date()));
     setNewNotes('');
+    setSkinType(null);
+    setLaserType(null);
     setShowAddModal(true);
   };
 
@@ -219,11 +268,16 @@ export default function BodyMapScreen({ route, navigation }) {
     }
     setSaving(true);
     try {
+      const pulseWidth = newPulseWidth ? parseFloat(newPulseWidth) : null;
+      const frequency = newFrequency ? parseFloat(newFrequency) : null;
+      const price = newPrice ? parseFloat(newPrice) : 0;
       await api.post('/appointments', {
         customerId: customer._id,
         date: newDate.toISOString(),
-        treatments: [{ zone: newZone.trim(), power }],
+        treatments: [{ zone: newZone.trim(), power, pulseWidth, frequency, price }],
         notes: newNotes.trim() || undefined,
+        skinType: skinType || undefined,
+        laserType: laserType || undefined,
       });
       setShowAddModal(false);
       await reloadProgress();
@@ -252,43 +306,25 @@ export default function BodyMapScreen({ route, navigation }) {
   const selectedZone = selectedId ? ZONE_CONFIG.find(z => z.id === selectedId) : null;
   const selectedData = selectedId ? zoneDataMap[selectedId] : null;
 
-  const getFill = (zoneId) => {
+  const getOverlayColor = (zoneId) => {
     const data = zoneDataMap[zoneId];
-    if (zoneId === selectedId) return isDark ? 'rgba(129,140,248,0.80)' : 'rgba(99,102,241,0.70)';
-    if (!data) return isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+    if (zoneId === selectedId) return isDark ? 'rgba(129,140,248,0.72)' : 'rgba(99,102,241,0.65)';
+    if (!data) return isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
     const pct = Math.min(data.totalVisits / SESSIONS_GOAL, 1);
-    const opacity = 0.22 + pct * 0.63;
+    const opacity = 0.22 + pct * 0.55;
     const rgb = isDark ? '252,211,77' : '245,158,11';
     return `rgba(${rgb},${opacity.toFixed(2)})`;
   };
 
-  const getStroke = (zoneId) => {
+  const getOverlayBorder = (zoneId) => {
     const data = zoneDataMap[zoneId];
     if (zoneId === selectedId) return isDark ? '#818CF8' : '#6366F1';
-    if (!data) return isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.11)';
-    return isDark ? 'rgba(252,211,77,0.55)' : 'rgba(245,158,11,0.55)';
-  };
-
-  const renderShape = (shape, zoneId, si) => {
-    const fill = getFill(zoneId);
-    const stroke = getStroke(zoneId);
-    const sw = zoneId === selectedId ? 2 : 1;
-    const key = `${zoneId}-${si}`;
-    const onPress = () => setSelectedId(prev => prev === zoneId ? null : zoneId);
-    if (shape.type === 'circle') {
-      return <Circle key={key} cx={shape.cx} cy={shape.cy} r={shape.r}
-        fill={fill} stroke={stroke} strokeWidth={sw} onPress={onPress} />;
-    }
-    return <Rect key={key} x={shape.x} y={shape.y} width={shape.width} height={shape.height}
-      rx={shape.rx} ry={shape.rx}
-      fill={fill} stroke={stroke} strokeWidth={sw} onPress={onPress} />;
+    if (!data) return isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)';
+    return isDark ? 'rgba(252,211,77,0.60)' : 'rgba(245,158,11,0.60)';
   };
 
   const formatDate = (d) =>
     new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-
-  const silBg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-  const silStroke = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)';
 
   return (
     <LinearGradient colors={theme.gradientBackground} style={styles.container}
@@ -329,7 +365,7 @@ export default function BodyMapScreen({ route, navigation }) {
           {[true, false].map(front => (
             <TouchableOpacity key={String(front)}
               style={[styles.toggleBtn, (isFront === front) && { backgroundColor: theme.primary }]}
-              onPress={() => { setIsFront(front); setSelectedId(null); }}>
+              onPress={() => { setIsFront(front); setSelectedId(null); setFaceSubzone('zoneFace'); setIntimateSubzone('zoneIntimate'); }}>
               <Text style={[styles.toggleText, {
                 color: (isFront === front) ? (isDark ? '#111' : '#fff') : theme.textSecondary,
               }]}>
@@ -347,22 +383,35 @@ export default function BodyMapScreen({ route, navigation }) {
           <LegendItem color={isDark ? 'rgba(252,211,77,0.85)' : 'rgba(245,158,11,0.85)'} label={t('completedSessions')} theme={theme} />
         </View>
 
-        {/* Body SVG */}
-        <View style={styles.mapWrapper}>
-          <Svg width={190} height={460} viewBox="0 0 200 465">
-            <G>
-              <Circle cx="100" cy="30" r="26" fill={silBg} stroke={silStroke} strokeWidth="1" />
-              <Rect x="87" y="56" width="26" height="19" rx="9" fill={silBg} stroke={silStroke} strokeWidth="1" />
-              <Rect x="35" y="78" width="27" height="131" rx="13" fill={silBg} stroke={silStroke} strokeWidth="1" />
-              <Rect x="138" y="78" width="27" height="131" rx="13" fill={silBg} stroke={silStroke} strokeWidth="1" />
-              <Rect x="63" y="72" width="74" height="130" rx="15" fill={silBg} stroke={silStroke} strokeWidth="1" />
-              <Rect x="72" y="198" width="27" height="256" rx="13" fill={silBg} stroke={silStroke} strokeWidth="1" />
-              <Rect x="101" y="198" width="27" height="256" rx="13" fill={silBg} stroke={silStroke} strokeWidth="1" />
-            </G>
-            {activeZones.map(zone =>
-              zone.shapes.map((shape, si) => renderShape(shape, zone.id, si))
-            )}
-          </Svg>
+        {/* Body Image + Zone Overlays */}
+        <View style={[styles.mapWrapper, { width: IMG_W, height: IMG_H }]}>
+          <Image
+            source={isFront
+              ? require('../assets/body-front.png')
+              : require('../assets/body-back.png')}
+            style={{ width: IMG_W, height: IMG_H }}
+            resizeMode="contain"
+          />
+          {activeZones.map(zone =>
+            zone.overlays.map((ov, i) => (
+              <TouchableOpacity
+                key={`${zone.id}-${i}`}
+                activeOpacity={0.75}
+                onPress={() => setSelectedId(prev => prev === zone.id ? null : zone.id)}
+                style={{
+                  position: 'absolute',
+                  top: ov.top * IMG_H,
+                  left: ov.left * IMG_W,
+                  width: ov.w * IMG_W,
+                  height: ov.h * IMG_H,
+                  backgroundColor: getOverlayColor(zone.id),
+                  borderRadius: zone.radius ?? 10,
+                  borderWidth: selectedId === zone.id ? 2 : 1,
+                  borderColor: getOverlayBorder(zone.id),
+                }}
+              />
+            ))
+          )}
         </View>
 
         {!selectedId && (
@@ -386,10 +435,66 @@ export default function BodyMapScreen({ route, navigation }) {
                   </Text>
                 )}
               </View>
-              <TouchableOpacity onPress={() => setSelectedId(null)}>
+              <TouchableOpacity onPress={() => { setSelectedId(null); setFaceSubzone('zoneFace'); setIntimateSubzone('zoneIntimate'); }}>
                 <Ionicons name="close-circle" size={26} color={theme.textTertiary} />
               </TouchableOpacity>
             </View>
+
+            {/* Intimate sub-zone picker */}
+            {selectedId === 'bikini' && (
+              <View style={styles.subzoneRow}>
+                {['zoneIntimate', 'zoneBikiniLine'].map(key => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.subzoneChip, {
+                      backgroundColor: intimateSubzone === key
+                        ? theme.primary
+                        : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'),
+                      borderColor: intimateSubzone === key ? theme.primary : theme.border,
+                    }]}
+                    onPress={() => setIntimateSubzone(key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.subzoneChipText, {
+                        color: intimateSubzone === key ? (isDark ? '#111' : '#fff') : theme.textSecondary,
+                      }]}
+                    >
+                      {t(key)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Face sub-zone picker */}
+            {selectedId === 'face' && (
+              <View style={styles.subzoneRow}>
+                {['zoneFace', 'zoneUpperLip', 'zoneChin'].map(key => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.subzoneChip, {
+                      backgroundColor: faceSubzone === key
+                        ? theme.primary
+                        : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'),
+                      borderColor: faceSubzone === key ? theme.primary : theme.border,
+                    }]}
+                    onPress={() => setFaceSubzone(key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.subzoneChipText, {
+                        color: faceSubzone === key ? (isDark ? '#111' : '#fff') : theme.textSecondary,
+                      }]}
+                    >
+                      {t(key)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
             {selectedData ? (
               <>
@@ -416,24 +521,37 @@ export default function BodyMapScreen({ route, navigation }) {
 
                 {/* Stat chips */}
                 <View style={styles.statsRow}>
-                  <StatChip label={t('lastPower')} value={`${selectedData.lastPower}J`} theme={theme} isDark={isDark} highlight />
-                  <StatChip label={t('avgPower')} value={`${selectedData.avgPower}J`} theme={theme} isDark={isDark} />
-                  <StatChip label={t('maxPower')} value={`${selectedData.maxPower}J`} theme={theme} isDark={isDark} />
+                  <StatChip label={t('lastPower')} value={`${Number(selectedData.lastPower).toFixed(2)}J`} theme={theme} isDark={isDark} highlight />
+                  <StatChip label={t('avgPower')} value={`${Number(selectedData.avgPower).toFixed(2)}J`} theme={theme} isDark={isDark} />
+                  <StatChip label={t('maxPower')} value={`${Number(selectedData.maxPower).toFixed(2)}J`} theme={theme} isDark={isDark} />
                 </View>
 
                 {/* Session history */}
                 <Text style={[styles.historyTitle, { color: theme.textTertiary }]}>{t('sessionHistory')}</Text>
-                {selectedData.treatments.slice(0, 10).map((tr, i) => (
-                  <View key={i} style={[styles.historyRow, {
-                    borderBottomColor: theme.divider,
-                    backgroundColor: i % 2 === 0 ? 'transparent'
-                      : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
-                  }]}>
+                {(() => {
+                  let history = selectedData.treatments;
+                  if (selectedId === 'face' && faceSubzone !== 'zoneFace') {
+                    const subLabel = t(faceSubzone).toLowerCase();
+                    history = history.filter(tr => tr.zone?.toLowerCase() === subLabel);
+                  }
+                  if (selectedId === 'bikini' && intimateSubzone !== 'zoneIntimate') {
+                    const subLabel = t(intimateSubzone).toLowerCase();
+                    history = history.filter(tr => tr.zone?.toLowerCase() === subLabel);
+                  }
+                  return history.slice(0, 10);
+                })().map((tr, i) => (
+                  <View key={i} style={[styles.historyRow, { borderBottomColor: theme.divider }]}>
                     <View style={[styles.historyDot, { backgroundColor: theme.primary }]} />
-                    <Text style={[styles.historyDate, { color: theme.textSecondary }]}>{formatDate(tr.date)}</Text>
+                    <Text style={[styles.historyDate, { color: theme.textSecondary, flex: 1 }]}>{formatDate(tr.date)}</Text>
                     <View style={[styles.powerBadge, { backgroundColor: theme.primary + '22' }]}>
                       <Text style={[styles.powerBadgeText, { color: theme.primary }]}>{tr.power}J</Text>
                     </View>
+                    <TouchableOpacity
+                      onPress={() => setSelectedTreatment(tr)}
+                      style={[styles.infoBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)' }]}
+                    >
+                      <Ionicons name="information-circle-outline" size={18} color={theme.textTertiary} />
+                    </TouchableOpacity>
                   </View>
                 ))}
               </>
@@ -505,6 +623,56 @@ export default function BodyMapScreen({ route, navigation }) {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Treatment Detail Modal ───────────────────────────────────────────── */}
+      <Modal visible={!!selectedTreatment} animationType="fade" transparent onRequestClose={() => setSelectedTreatment(null)}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setSelectedTreatment(null)}
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.overlay, justifyContent: 'center', alignItems: 'center' }]}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={[styles.detailModal, {
+              backgroundColor: isDark ? 'rgba(21,27,43,0.99)' : theme.surface,
+              borderColor: isDark ? 'rgba(255,255,255,0.10)' : theme.border,
+            }]}>
+              {/* Modal header */}
+              <View style={styles.detailModalHeader}>
+                <Text style={[styles.detailModalTitle, { color: theme.textPrimary }]}>
+                  {selectedTreatment ? formatDate(selectedTreatment.date) : ''}
+                </Text>
+                <TouchableOpacity onPress={() => setSelectedTreatment(null)}>
+                  <Ionicons name="close" size={24} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {selectedTreatment && (
+                <View style={styles.detailModalBody}>
+                  {selectedTreatment.zone && (
+                    <DetailRow icon="body-outline" label={t('zone')} value={selectedTreatment.zone} theme={theme} isDark={isDark} />
+                  )}
+                  <DetailRow icon="flash-outline" label={t('power')} value={`${selectedTreatment.power} J`} theme={theme} isDark={isDark} highlight />
+                  {selectedTreatment.pulseWidth != null && (
+                    <DetailRow icon="timer-outline" label={t('pulseWidth')} value={`${selectedTreatment.pulseWidth} ms`} theme={theme} isDark={isDark} />
+                  )}
+                  {selectedTreatment.frequency != null && (
+                    <DetailRow icon="pulse-outline" label={t('frequency')} value={`${selectedTreatment.frequency} Hz`} theme={theme} isDark={isDark} />
+                  )}
+                  {selectedTreatment.skinType != null && (
+                    <DetailRow icon="color-palette-outline" label={t('skinType')} value={`Type ${selectedTreatment.skinType}`} theme={theme} isDark={isDark} />
+                  )}
+                  {selectedTreatment.laserType && (
+                    <DetailRow icon="flash" label={t('laserType')} value={selectedTreatment.laserType} theme={theme} isDark={isDark} />
+                  )}
+                  {selectedTreatment.notes ? (
+                    <DetailRow icon="document-text-outline" label={t('notes')} value={selectedTreatment.notes} theme={theme} isDark={isDark} />
+                  ) : null}
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── Log Treatment Modal ─────────────────────────────────────────────── */}
       <Modal visible={showAddModal} animationType="slide" transparent onRequestClose={() => setShowAddModal(false)}>
@@ -607,6 +775,64 @@ export default function BodyMapScreen({ route, navigation }) {
                   onChange={handleDateChange} maximumDate={new Date()} />
               )}
 
+              {/* Skin Type */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('skinTypeOptional')}</Text>
+              <View style={styles.skinRow}>
+                {SKIN_TYPES.map(skin => {
+                  const selected = skinType === skin.type;
+                  return (
+                    <TouchableOpacity
+                      key={skin.type}
+                      onPress={() => setSkinType(selected ? null : skin.type)}
+                      style={styles.skinItem}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[
+                        styles.skinSwatch,
+                        { backgroundColor: skin.color },
+                        selected && { borderWidth: 3, borderColor: theme.primary },
+                      ]} />
+                      <Text style={[styles.skinLabel, { color: selected ? theme.primary : theme.textTertiary }]}>
+                        {skin.type}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {skinType && (
+                <Text style={[styles.skinDescription, { color: theme.textSecondary }]}>
+                  {t(SKIN_TYPES[skinType - 1].descKey)}
+                </Text>
+              )}
+
+              {/* Laser Type */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('laserTypeOptional')}</Text>
+              <View style={styles.laserRow}>
+                {LASER_TYPES.map(laser => {
+                  const selected = laserType === laser;
+                  return (
+                    <TouchableOpacity
+                      key={laser}
+                      onPress={() => setLaserType(selected ? null : laser)}
+                      style={[styles.laserChip, {
+                        backgroundColor: selected ? theme.primary + '18' : (isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground),
+                        borderColor: selected ? theme.primary : theme.border,
+                      }]}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={laser === 'Diode' ? 'flash' : 'planet-outline'}
+                        size={18}
+                        color={selected ? theme.primary : theme.textTertiary}
+                      />
+                      <Text style={[styles.laserChipText, { color: selected ? theme.primary : theme.textSecondary }]}>
+                        {laser}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               {/* Power field */}
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('power')} (J)</Text>
               <View style={[styles.fieldInput, {
@@ -619,6 +845,57 @@ export default function BodyMapScreen({ route, navigation }) {
                   value={newPower}
                   onChangeText={setNewPower}
                   placeholder={t('powerPlaceholder')}
+                  placeholderTextColor={theme.textTertiary}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              {/* Pulse Width field */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('pulseWidth')}</Text>
+              <View style={[styles.fieldInput, {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground,
+                borderColor: theme.border,
+              }]}>
+                <Ionicons name="timer-outline" size={18} color={theme.textTertiary} style={styles.fieldIcon} />
+                <TextInput
+                  style={[styles.fieldTextInput, { color: theme.textPrimary }]}
+                  value={newPulseWidth}
+                  onChangeText={setNewPulseWidth}
+                  placeholder="ms"
+                  placeholderTextColor={theme.textTertiary}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              {/* Frequency field */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('frequency')}</Text>
+              <View style={[styles.fieldInput, {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground,
+                borderColor: theme.border,
+              }]}>
+                <Ionicons name="pulse-outline" size={18} color={theme.textTertiary} style={styles.fieldIcon} />
+                <TextInput
+                  style={[styles.fieldTextInput, { color: theme.textPrimary }]}
+                  value={newFrequency}
+                  onChangeText={setNewFrequency}
+                  placeholder="Hz"
+                  placeholderTextColor={theme.textTertiary}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              {/* Price field */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('price')}</Text>
+              <View style={[styles.fieldInput, {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground,
+                borderColor: theme.border,
+              }]}>
+                <Ionicons name="pricetag-outline" size={18} color={theme.textTertiary} style={styles.fieldIcon} />
+                <TextInput
+                  style={[styles.fieldTextInput, { color: theme.textPrimary }]}
+                  value={newPrice}
+                  onChangeText={setNewPrice}
+                  placeholder="0"
                   placeholderTextColor={theme.textTertiary}
                   keyboardType="decimal-pad"
                 />
@@ -677,6 +954,18 @@ function LegendItem({ color, label, theme }) {
   );
 }
 
+function DetailRow({ icon, label, value, theme, isDark, highlight }) {
+  return (
+    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)' }]}>
+      <View style={[styles.detailRowIcon, { backgroundColor: highlight ? theme.primary + '22' : theme.primary + '0F' }]}>
+        <Ionicons name={icon} size={16} color={highlight ? theme.primary : theme.textTertiary} />
+      </View>
+      <Text style={[styles.detailRowLabel, { color: theme.textSecondary }]}>{label}</Text>
+      <Text style={[styles.detailRowValue, { color: highlight ? theme.primary : theme.textPrimary }]}>{value}</Text>
+    </View>
+  );
+}
+
 function StatChip({ label, value, theme, isDark, highlight }) {
   return (
     <View style={[styles.statChip, {
@@ -720,7 +1009,7 @@ const styles = StyleSheet.create({
   legendDot: { width: 12, height: 12, borderRadius: 6 },
   legendLabel: { fontSize: 11, fontWeight: '600' },
 
-  mapWrapper: { alignItems: 'center', marginBottom: 8 },
+  mapWrapper: { position: 'relative', marginBottom: 8 },
   hint: { fontSize: 12, fontWeight: '500', marginBottom: 20 },
 
   detailCard: {
@@ -728,7 +1017,10 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12,
     shadowRadius: 24, elevation: 6,
   },
-  detailHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  detailHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  subzoneRow: { flexDirection: 'row', gap: 6, marginBottom: 16 },
+  subzoneChip: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  subzoneChipText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
   detailZoneName: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
   detailZoneSub: { fontSize: 12, fontWeight: '500', marginTop: 2 },
 
@@ -745,11 +1037,11 @@ const styles = StyleSheet.create({
   statChipLabel: { fontSize: 10, fontWeight: '600', marginTop: 2 },
 
   historyTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 },
-  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, gap: 10 },
+  historyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, gap: 10 },
   historyDot: { width: 6, height: 6, borderRadius: 3 },
-  historyDate: { flex: 1, fontSize: 14, fontWeight: '500' },
-  powerBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  powerBadgeText: { fontSize: 13, fontWeight: '800' },
+  historyDate: { fontSize: 13, fontWeight: '500' },
+  powerBadge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 7 },
+  powerBadgeText: { fontSize: 12, fontWeight: '700' },
 
   noDataContainer: { alignItems: 'center', paddingVertical: 28, gap: 8 },
   noDataText: { fontSize: 14, fontWeight: '500' },
@@ -792,6 +1084,19 @@ const styles = StyleSheet.create({
   modalIconBadge: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   modalTitle: { fontSize: 18, fontWeight: '800' },
 
+  infoBtn: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  detailModal: {
+    width: 300, borderRadius: 20, padding: 20, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 10,
+  },
+  detailModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  detailModalTitle: { fontSize: 16, fontWeight: '800' },
+  detailModalBody: { gap: 2 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, gap: 10 },
+  detailRowIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  detailRowLabel: { flex: 1, fontSize: 13, fontWeight: '600' },
+  detailRowValue: { fontSize: 14, fontWeight: '700' },
+  metricsRow: { flexDirection: 'row', gap: 10 },
   fieldLabel: { fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 14 },
   fieldInput: {
     flexDirection: 'row', alignItems: 'center', borderWidth: 1,
@@ -810,6 +1115,15 @@ const styles = StyleSheet.create({
   },
   datePickerTitle: { fontSize: 17, fontWeight: '600' },
   datePickerBtn: { fontSize: 16 },
+
+  skinRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  skinItem: { alignItems: 'center', gap: 6, flex: 1 },
+  skinSwatch: { width: 40, height: 40, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+  skinLabel: { fontSize: 12, fontWeight: '700' },
+  skinDescription: { fontSize: 12, fontWeight: '500', textAlign: 'center', marginBottom: 6 },
+  laserRow: { flexDirection: 'row', gap: 12, marginBottom: 4 },
+  laserChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
+  laserChipText: { fontSize: 14, fontWeight: '700' },
 
   saveBtn: {
     marginTop: 20, marginBottom: 8, borderRadius: 16,

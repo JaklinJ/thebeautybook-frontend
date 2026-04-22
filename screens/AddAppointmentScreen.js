@@ -18,6 +18,16 @@ import { LanguageContext } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import api from "../config/api";
 
+const LASER_TYPES = ['Diode', 'Alexandrite'];
+
+const SKIN_TYPES = [
+  { type: 1, color: '#FDDCB5', descKey: 'skinType1' },
+  { type: 2, color: '#E8B88A', descKey: 'skinType2' },
+  { type: 3, color: '#C68642', descKey: 'skinType3' },
+  { type: 4, color: '#8D5524', descKey: 'skinType4' },
+  { type: 5, color: '#4A2410', descKey: 'skinType5' },
+];
+
 // Zone translation keys
 const ZONE_KEYS = [
   "zoneFace",
@@ -41,13 +51,26 @@ const ZONE_KEYS = [
 ];
 
 export default function AddAppointmentScreen({ route, navigation }) {
-  const { customer, onGoBack } = route.params;
-  const [date, setDate] = useState(new Date());
+  const { customer, appointment, isEditing } = route.params;
+  const [date, setDate] = useState(isEditing ? new Date(appointment.date) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInputText, setDateInputText] = useState("");
-  const [treatments, setTreatments] = useState([{ zone: "", power: "" }]);
-  const [notes, setNotes] = useState("");
+  const [treatments, setTreatments] = useState(
+    isEditing
+      ? appointment.treatments.map(t => ({
+          zone: t.zone,
+          power: String(t.power),
+          pulseWidth: t.pulseWidth != null ? String(t.pulseWidth) : "",
+          frequency: t.frequency != null ? String(t.frequency) : "",
+          price: t.price ? String(t.price) : "",
+        }))
+      : [{ zone: "", power: "", pulseWidth: "", frequency: "", price: "" }]
+  );
+  const [notes, setNotes] = useState(isEditing ? (appointment.notes || "") : "");
+  const [skinType, setSkinType] = useState(isEditing ? (appointment.skinType || null) : null);
+  const [laserType, setLaserType] = useState(isEditing ? (appointment.laserType || null) : null);
   const [loading, setLoading] = useState(false);
+  const [priceList, setPriceList] = useState({});
   const scrollViewRef = useRef(null);
   const hasMountedRef = useRef(false);
   const { t } = React.useContext(LanguageContext);
@@ -56,9 +79,10 @@ export default function AddAppointmentScreen({ route, navigation }) {
   // Create translated zones array
   const COMMON_ZONES = ZONE_KEYS.map((key) => t(key));
 
-  // Initialize date input text
+  // Initialize date input text and load price list
   React.useEffect(() => {
     setDateInputText(formatDateForInput(date));
+    api.get('/pricelists').then(res => setPriceList(res.data.prices || {})).catch(() => {});
   }, []);
 
   const formatDateForInput = (dateObj) => {
@@ -96,7 +120,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
   };
 
   const addTreatment = () => {
-    setTreatments((prev) => [...prev, { zone: "", power: "" }]);
+    setTreatments((prev) => [...prev, { zone: "", power: "", pulseWidth: "", frequency: "", price: "" }]);
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
@@ -112,8 +136,17 @@ export default function AddAppointmentScreen({ route, navigation }) {
   const updateTreatment = (index, field, value) => {
     const newTreatments = [...treatments];
     newTreatments[index][field] = value;
+    // Auto-fill price when zone is selected
+    if (field === 'zone') {
+      const zoneKey = ZONE_KEYS.find(k => t(k) === value);
+      if (zoneKey && priceList[zoneKey] !== undefined) {
+        newTreatments[index].price = String(priceList[zoneKey]);
+      }
+    }
     setTreatments(newTreatments);
   };
+
+  const parseNum = (val) => parseFloat(String(val).replace(',', '.'));
 
   const handleSubmit = async () => {
     const validTreatments = treatments.filter((t) => t.zone.trim() && t.power);
@@ -134,7 +167,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
       }
     }
 
-    const power = parseFloat(validTreatments[0].power);
+    const power = parseNum(validTreatments[0].power);
     if (isNaN(power) || power < 0) {
       Alert.alert(t("error"), t("enterValidPower"));
       return;
@@ -144,22 +177,35 @@ export default function AddAppointmentScreen({ route, navigation }) {
     try {
       const treatmentsData = validTreatments.map((t) => ({
         zone: t.zone.trim(),
-        power: parseFloat(t.power),
+        power: parseNum(t.power),
+        pulseWidth: t.pulseWidth ? parseNum(t.pulseWidth) : null,
+        frequency: t.frequency ? parseNum(t.frequency) : null,
+        price: parseNum(t.price) || 0,
       }));
 
-      await api.post("/appointments", {
-        customerId: customer._id,
-        date: date.toISOString(),
-        treatments: treatmentsData,
-        notes: notes.trim() || undefined,
-      });
+      if (isEditing) {
+        await api.put(`/appointments/${appointment._id}`, {
+          date: date.toISOString(),
+          treatments: treatmentsData,
+          skinType: skinType || undefined,
+          laserType: laserType || undefined,
+          notes: notes.trim() || undefined,
+        });
+      } else {
+        await api.post("/appointments", {
+          customerId: customer._id,
+          date: date.toISOString(),
+          treatments: treatmentsData,
+          skinType: skinType || undefined,
+          laserType: laserType || undefined,
+          notes: notes.trim() || undefined,
+        });
+      }
 
-      Alert.alert(t("success"), t("appointmentAdded"), [
+      Alert.alert(t("success"), isEditing ? t("appointmentUpdated") : t("appointmentAdded"), [
         {
           text: t("confirm"),
-          onPress: () => {
-            navigation.goBack();
-          },
+          onPress: () => navigation.goBack(),
         },
       ]);
     } catch (error) {
@@ -199,7 +245,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
-            {t("newAppointment")}
+            {isEditing ? t("editAppointment") : t("newAppointment")}
           </Text>
           <View style={styles.placeholder} />
         </View>
@@ -348,6 +394,75 @@ export default function AddAppointmentScreen({ route, navigation }) {
             )}
           </View>
 
+          {/* Skin Type */}
+          <View style={[styles.section, { backgroundColor: theme.card }]}>
+            <Text style={[styles.label, { color: theme.textPrimary }]}>
+              {t("skinTypeOptional")}
+            </Text>
+            <View style={styles.skinRow}>
+              {SKIN_TYPES.map((skin) => {
+                const selected = skinType === skin.type;
+                return (
+                  <TouchableOpacity
+                    key={skin.type}
+                    onPress={() => setSkinType(selected ? null : skin.type)}
+                    style={styles.skinItem}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[
+                      styles.skinSwatch,
+                      { backgroundColor: skin.color },
+                      selected && { borderWidth: 3, borderColor: theme.primary },
+                    ]} />
+                    <Text style={[styles.skinLabel, { color: selected ? theme.primary : theme.textTertiary }]}>
+                      {skin.type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {skinType && (
+              <Text style={[styles.skinDescription, { color: theme.textSecondary }]}>
+                {t(SKIN_TYPES[skinType - 1].descKey)}
+              </Text>
+            )}
+          </View>
+
+          {/* Laser Type */}
+          <View style={[styles.section, { backgroundColor: theme.card }]}>
+            <Text style={[styles.label, { color: theme.textPrimary }]}>
+              {t("laserTypeOptional")}
+            </Text>
+            <View style={styles.laserRow}>
+              {LASER_TYPES.map((laser) => {
+                const selected = laserType === laser;
+                return (
+                  <TouchableOpacity
+                    key={laser}
+                    onPress={() => setLaserType(selected ? null : laser)}
+                    style={[
+                      styles.laserChip,
+                      {
+                        backgroundColor: selected ? theme.primary + '18' : theme.inputBackground,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={laser === 'Diode' ? 'flash' : 'planet-outline'}
+                      size={18}
+                      color={selected ? theme.primary : theme.textTertiary}
+                    />
+                    <Text style={[styles.laserChipText, { color: selected ? theme.primary : theme.textSecondary }]}>
+                      {laser}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={[styles.section, { backgroundColor: theme.card }]}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.label, { color: theme.textPrimary }]}>
@@ -365,102 +480,131 @@ export default function AddAppointmentScreen({ route, navigation }) {
                   },
                 ]}
               >
-                <View style={styles.treatmentInputs}>
-                  <View style={styles.zoneContainer}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      {t("zone")}
-                    </Text>
-                    <ScrollView
-                      showsVerticalScrollIndicator={false}
-                      style={styles.zoneScroll}
-                      nestedScrollEnabled={true}
-                    >
-                      <View style={styles.zoneChipsContainer}>
-                        {COMMON_ZONES.map((zone) => (
-                          <TouchableOpacity
-                            key={zone}
+                {/* Zone chips — full width */}
+                <View style={styles.zoneContainer}>
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                    {t("zone")}
+                  </Text>
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    style={styles.zoneScroll}
+                    nestedScrollEnabled={true}
+                  >
+                    <View style={styles.zoneChipsContainer}>
+                      {COMMON_ZONES.map((zone) => (
+                        <TouchableOpacity
+                          key={zone}
+                          style={[
+                            styles.zoneChip,
+                            {
+                              backgroundColor:
+                                treatment.zone === zone
+                                  ? theme.primary + "20"
+                                  : theme.surfaceSecondary,
+                              borderColor:
+                                treatment.zone === zone
+                                  ? theme.primary
+                                  : theme.border,
+                            },
+                          ]}
+                          onPress={() => updateTreatment(index, "zone", zone)}
+                        >
+                          <Text
                             style={[
-                              styles.zoneChip,
+                              styles.zoneChipText,
                               {
-                                backgroundColor:
-                                  treatment.zone === zone
-                                    ? theme.primary + "20"
-                                    : theme.surfaceSecondary,
-                                borderColor:
+                                color:
                                   treatment.zone === zone
                                     ? theme.primary
-                                    : theme.border,
+                                    : theme.textSecondary,
                               },
                             ]}
-                            onPress={() => updateTreatment(index, "zone", zone)}
                           >
-                            <Text
-                              style={[
-                                styles.zoneChipText,
-                                {
-                                  color:
-                                    treatment.zone === zone
-                                      ? theme.primary
-                                      : theme.textSecondary,
-                                },
-                              ]}
-                            >
-                              {zone}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                    <TextInput
-                      style={[
-                        styles.customZoneInput,
-                        {
-                          borderColor: theme.border,
-                          backgroundColor: theme.inputBackground,
-                          color: theme.textPrimary,
-                        },
-                      ]}
-                      placeholder={t("customZonePlaceholder")}
-                      value={treatment.zone}
-                      onChangeText={(value) =>
-                        updateTreatment(index, "zone", value)
-                      }
-                      placeholderTextColor={theme.textTertiary}
-                    />
-                  </View>
+                            {zone}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                  <TextInput
+                    style={[
+                      styles.customZoneInput,
+                      {
+                        borderColor: theme.border,
+                        backgroundColor: theme.inputBackground,
+                        color: theme.textPrimary,
+                      },
+                    ]}
+                    placeholder={t("customZonePlaceholder")}
+                    value={treatment.zone}
+                    onChangeText={(value) => updateTreatment(index, "zone", value)}
+                    placeholderTextColor={theme.textTertiary}
+                  />
+                </View>
 
-                  <View style={styles.powerContainer}>
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
+                {/* Metrics row — below zones */}
+                <View style={styles.metricsRow}>
+                  <View style={styles.metricField}>
+                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
                       {t("power")}
                     </Text>
                     <TextInput
-                      style={[
-                        styles.powerInput,
-                        {
-                          borderColor: theme.border,
-                          backgroundColor: theme.inputBackground,
-                          color: theme.textPrimary,
-                        },
-                      ]}
+                      style={[styles.metricInput, { borderColor: treatment.power ? theme.primary : theme.border, backgroundColor: theme.inputBackground, color: theme.textPrimary }]}
                       placeholder={t("powerPlaceholder")}
                       value={treatment.power}
-                      onChangeText={(value) =>
-                        updateTreatment(index, "power", value)
-                      }
+                      onChangeText={(value) => updateTreatment(index, "power", value)}
                       keyboardType="decimal-pad"
                       placeholderTextColor={theme.textTertiary}
                     />
                   </View>
+                  <View style={styles.metricField}>
+                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                      {t("pulseWidth")}
+                    </Text>
+                    <TextInput
+                      style={[styles.metricInput, { borderColor: treatment.pulseWidth ? theme.primary : theme.border, backgroundColor: theme.inputBackground, color: theme.textPrimary }]}
+                      placeholder="ms"
+                      value={treatment.pulseWidth}
+                      onChangeText={(value) => updateTreatment(index, "pulseWidth", value)}
+                      keyboardType="decimal-pad"
+                      placeholderTextColor={theme.textTertiary}
+                    />
+                  </View>
+                  <View style={styles.metricField}>
+                    <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                      {t("frequency")}
+                    </Text>
+                    <TextInput
+                      style={[styles.metricInput, { borderColor: treatment.frequency ? theme.primary : theme.border, backgroundColor: theme.inputBackground, color: theme.textPrimary }]}
+                      placeholder="Hz"
+                      value={treatment.frequency}
+                      onChangeText={(value) => updateTreatment(index, "frequency", value)}
+                      keyboardType="decimal-pad"
+                      placeholderTextColor={theme.textTertiary}
+                    />
+                  </View>
+                </View>
+
+                {/* Price row — full width, below zones and power */}
+                <View style={styles.priceRow}>
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                    {t("price")}
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.priceInput,
+                      {
+                        borderColor: treatment.price ? theme.primary : theme.border,
+                        backgroundColor: theme.inputBackground,
+                        color: theme.textPrimary,
+                      },
+                    ]}
+                    placeholder="0"
+                    value={treatment.price}
+                    onChangeText={(value) => updateTreatment(index, "price", value)}
+                    keyboardType="decimal-pad"
+                    placeholderTextColor={theme.textTertiary}
+                  />
                 </View>
 
                 {treatments.length > 1 && (
@@ -539,7 +683,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
             <Text
               style={[styles.submitButtonText, { color: theme.buttonText }]}
             >
-              {loading ? t("saving") : t("saveAppointment")}
+              {loading ? t("saving") : isEditing ? t("updateAppointment") : t("saveAppointment")}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -660,14 +804,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
   },
-  treatmentInputs: {
-    flexDirection: "row",
-  },
   zoneContainer: {
-    flex: 2,
-    marginRight: 10,
+    marginBottom: 12,
   },
   zoneScroll: {
+    maxHeight: 150,
     marginBottom: 10,
   },
   zoneChip: {
@@ -687,10 +828,15 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 14,
   },
-  powerContainer: {
+  metricsRow: {
+    flexDirection: "column",
+    gap: 8,
+    marginBottom: 4,
+  },
+  metricField: {
     flex: 1,
   },
-  powerInput: {
+  metricInput: {
     borderWidth: 1,
     borderRadius: 8,
     padding: 10,
@@ -745,14 +891,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-  zoneContainer: {
-    flex: 2,
-    marginRight: 10,
-  },
-  zoneScroll: {
-    maxHeight: 150, // Limit height to make it scrollable
-    marginBottom: 10,
-  },
   zoneChipsContainer: {
     flexDirection: "row",
     flexWrap: "wrap", // Wrap chips to next line
@@ -768,5 +906,66 @@ const styles = StyleSheet.create({
   zoneChipText: {
     fontSize: 13,
     fontWeight: "600",
+  },
+  laserRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  laserChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  laserChipText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  skinRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  skinItem: {
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  skinSwatch: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  skinLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  skinDescription: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    gap: 10,
+  },
+  priceInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
   },
 });

@@ -25,6 +25,8 @@ export default function CustomerProfileScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('visits'); // 'visits' | 'progress' | 'map'
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingAppointmentId, setDeletingAppointmentId] = useState(null);
+  const [selectedTreatment, setSelectedTreatment] = useState(null);
   const { t } = React.useContext(LanguageContext);
   const { theme, isDark } = useTheme();
 
@@ -62,9 +64,37 @@ export default function CustomerProfileScreen({ route, navigation }) {
   };
 
   const handleAddAppointment = () => {
-    navigation.navigate("AddAppointment", {
-      customer,
-    });
+    navigation.navigate("AddAppointment", { customer });
+  };
+
+  const handleEditAppointment = (appointment) => {
+    navigation.navigate("AddAppointment", { customer, appointment, isEditing: true });
+  };
+
+  const handleDeleteAppointment = (appointment) => {
+    Alert.alert(
+      t("deleteAppointment"),
+      t("deleteAppointmentConfirm"),
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("delete"),
+          style: "destructive",
+          onPress: async () => {
+            setDeletingAppointmentId(appointment._id);
+            try {
+              await api.delete(`/appointments/${appointment._id}`);
+              await loadAppointments();
+              await loadProgress();
+            } catch (error) {
+              Alert.alert(t("error"), t("deleteAppointmentFailed"));
+            } finally {
+              setDeletingAppointmentId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleDeleteCustomer = () => {
@@ -103,22 +133,39 @@ export default function CustomerProfileScreen({ route, navigation }) {
         <Text style={[styles.appointmentDate, { color: theme.textPrimary }]}>
           {formatDate(item.date)}
         </Text>
+        <View style={styles.appointmentActions}>
+          <TouchableOpacity
+            onPress={() => handleEditAppointment(item)}
+            style={[styles.appointmentActionBtn, { backgroundColor: theme.primary + '18' }]}
+          >
+            <Ionicons name="create-outline" size={16} color={theme.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleDeleteAppointment(item)}
+            style={[styles.appointmentActionBtn, { backgroundColor: theme.error + '18' }]}
+            disabled={deletingAppointmentId === item._id}
+          >
+            {deletingAppointmentId === item._id
+              ? <ActivityIndicator size="small" color={theme.error} />
+              : <Ionicons name="trash-outline" size={16} color={theme.error} />
+            }
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.treatmentsContainer}>
         {item.treatments.map((treatment, index) => (
-          <View key={index} style={[styles.treatmentItem, { 
-            backgroundColor: theme.surfaceSecondary 
-          }]}>
-            <View style={styles.treatmentInfo}>
-              <Text style={[styles.zoneText, { color: theme.textPrimary }]}>
-                {treatment.zone}
-              </Text>
-              <Text style={[styles.powerText, { color: theme.primary }]}>
-                {t("power")}: {treatment.power}
-              </Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            key={index}
+            style={[styles.treatmentItem, { backgroundColor: theme.surfaceSecondary }]}
+            onPress={() => setSelectedTreatment({ ...treatment, skinType: item.skinType, laserType: item.laserType, notes: item.notes })}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.zoneText, { color: theme.textPrimary }]}>
+              {treatment.zone}
+            </Text>
+            <Ionicons name="information-circle-outline" size={18} color={theme.primary} />
+          </TouchableOpacity>
         ))}
       </View>
 
@@ -130,59 +177,82 @@ export default function CustomerProfileScreen({ route, navigation }) {
     </View>
   );
 
-  const renderProgressItem = (item) => (
-    <View key={item.zone} style={[styles.progressCard, {
-      backgroundColor: theme.glassCard,
-      borderColor: theme.glassCardBorder,
-      shadowColor: isDark ? '#7C3AED' : '#F59E0B',
-    }]}>
-      <Text style={[styles.progressZone, { color: theme.textPrimary }]}>
-        {item.zone}
-      </Text>
-      <View style={[styles.lastPowerRow, { backgroundColor: theme.primary + '18', borderColor: theme.primary + '40' }]}>
-        <Text style={[styles.lastPowerLabel, { color: theme.primary }]}>
-          {t("lastPower")}
-        </Text>
-        <Text style={[styles.lastPowerValue, { color: theme.primary }]}>
-          {item.lastPower}
-        </Text>
+  const renderProgressItem = (item) => {
+    const treatments = item.treatments ?? [];
+    const last = treatments[treatments.length - 1];
+
+    const pwValues = treatments.map(t => t.pulseWidth).filter(v => v != null);
+    const freqValues = treatments.map(t => t.frequency).filter(v => v != null);
+
+    const hasPw = pwValues.length > 0;
+    const hasFreq = freqValues.length > 0;
+
+    const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
+    const cols = [
+      { key: 'fluence', label: 'Fluence', unit: 'J', color: theme.primary,
+        min: item.minPower, max: item.maxPower, avgVal: item.averagePower, last: item.lastPower },
+      ...(hasPw ? [{ key: 'pw', label: 'Pulse W.', unit: 'ms', color: isDark ? '#34D399' : '#059669',
+        min: Math.min(...pwValues), max: Math.max(...pwValues), avgVal: avg(pwValues), last: last?.pulseWidth }] : []),
+      ...(hasFreq ? [{ key: 'freq', label: 'Freq.', unit: 'Hz', color: isDark ? '#818CF8' : '#6366F1',
+        min: Math.min(...freqValues), max: Math.max(...freqValues), avgVal: avg(freqValues), last: last?.frequency }] : []),
+    ];
+
+    const borderCol = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
+
+    return (
+      <View key={item.zone} style={[styles.progressCard, {
+        backgroundColor: theme.glassCard,
+        borderColor: theme.glassCardBorder,
+        shadowColor: isDark ? '#7C3AED' : '#F59E0B',
+      }]}>
+        {/* Zone name + visits */}
+        <View style={styles.progressCardHeader}>
+          <Text style={[styles.progressZone, { color: theme.textPrimary }]}>{item.zone}</Text>
+          <View style={[styles.visitsBadge, { backgroundColor: theme.primary + '18' }]}>
+            <Text style={[styles.visitsBadgeText, { color: theme.primary }]}>
+              {item.totalVisits} {t('visits')}
+            </Text>
+          </View>
+        </View>
+
+        {/* Table */}
+        <View style={[styles.statsTable, { borderColor: borderCol }]}>
+          {/* Header row */}
+          <View style={[styles.tableRow, styles.tableHeaderRow, { borderBottomColor: borderCol, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }]}>
+            <View style={styles.tableRowLabel} />
+            {cols.map(col => (
+              <Text key={col.key} style={[styles.tableColHeader, { color: col.color, flex: 1 }]}>
+                {col.label}
+              </Text>
+            ))}
+          </View>
+
+          {/* Last row */}
+          {[
+            { rowLabel: t('rowLast'), getValue: col => col.last },
+            { rowLabel: t('rowAvg'),  getValue: col => col.avgVal },
+            { rowLabel: t('rowMax'),  getValue: col => col.max },
+            { rowLabel: t('rowMin'),  getValue: col => col.min },
+          ].map(({ rowLabel, getValue }, ri) => (
+            <View key={ri} style={[styles.tableRow, {
+              borderBottomColor: borderCol,
+              borderBottomWidth: ri < 3 ? 1 : 0,
+            }]}>
+              <Text style={[styles.tableRowLabel, { color: theme.textTertiary }]}>{rowLabel}</Text>
+              {cols.map(col => {
+                const val = getValue(col);
+                return (
+                  <Text key={col.key} style={[styles.tableCell, { color: col.color, flex: 1 }]}>
+                    {val != null ? `${Number(val).toFixed(1)} ${col.unit}` : '—'}
+                  </Text>
+                );
+              })}
+            </View>
+          ))}
+        </View>
       </View>
-      <View style={styles.progressStats}>
-        <View style={[styles.statItem, { backgroundColor: theme.surfaceSecondary }]}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("totalVisits")}
-          </Text>
-          <Text style={[styles.statValue, { color: theme.primary }]}>
-            {item.totalVisits}
-          </Text>
-        </View>
-        <View style={[styles.statItem, { backgroundColor: theme.surfaceSecondary }]}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("avgPower")}
-          </Text>
-          <Text style={[styles.statValue, { color: theme.primary }]}>
-            {item.averagePower.toFixed(1)}
-          </Text>
-        </View>
-        <View style={[styles.statItem, { backgroundColor: theme.surfaceSecondary }]}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("maxPower")}
-          </Text>
-          <Text style={[styles.statValue, { color: theme.primary }]}>
-            {item.maxPower}
-          </Text>
-        </View>
-        <View style={[styles.statItem, { backgroundColor: theme.surfaceSecondary }]}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            {t("minPower")}
-          </Text>
-          <Text style={[styles.statValue, { color: theme.primary }]}>
-            {item.minPower}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <LinearGradient
@@ -340,6 +410,92 @@ export default function CustomerProfileScreen({ route, navigation }) {
           </TouchableOpacity>
         </>
       )}
+
+      {/* Treatment Info Modal */}
+      <Modal
+        visible={!!selectedTreatment}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setSelectedTreatment(null)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setSelectedTreatment(null)}
+          style={[styles.deleteModalOverlay, { backgroundColor: theme.overlay }]}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={[styles.infoModalCard, {
+              backgroundColor: isDark ? 'rgba(21,27,43,0.98)' : 'rgba(255,255,255,0.98)',
+              borderColor: isDark ? theme.glassCardBorder : theme.border,
+            }]}>
+              <View style={[styles.infoModalIconBadge, { backgroundColor: theme.primary + '18' }]}>
+                <Ionicons name="body-outline" size={30} color={theme.primary} />
+              </View>
+              <Text style={[styles.infoModalZone, { color: theme.textPrimary }]}>
+                {selectedTreatment?.zone}
+              </Text>
+
+              <View style={styles.infoModalRows}>
+                <View style={[styles.infoModalRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.infoModalRowLabel, { color: theme.textTertiary }]}>{t("power")}</Text>
+                  <Text style={[styles.infoModalRowValue, { color: theme.primary }]}>{selectedTreatment?.power}</Text>
+                </View>
+                {selectedTreatment?.pulseWidth != null && (
+                  <View style={[styles.infoModalRow, { borderBottomColor: theme.border }]}>
+                    <Text style={[styles.infoModalRowLabel, { color: theme.textTertiary }]}>{t("pulseWidth")}</Text>
+                    <Text style={[styles.infoModalRowValue, { color: theme.textPrimary }]}>{selectedTreatment.pulseWidth}</Text>
+                  </View>
+                )}
+                {selectedTreatment?.frequency != null && (
+                  <View style={[styles.infoModalRow, { borderBottomColor: theme.border }]}>
+                    <Text style={[styles.infoModalRowLabel, { color: theme.textTertiary }]}>{t("frequency")}</Text>
+                    <Text style={[styles.infoModalRowValue, { color: theme.textPrimary }]}>{selectedTreatment.frequency}</Text>
+                  </View>
+                )}
+                {selectedTreatment?.price > 0 && (
+                  <View style={[styles.infoModalRow, { borderBottomColor: theme.border }]}>
+                    <Text style={[styles.infoModalRowLabel, { color: theme.textTertiary }]}>{t("price")}</Text>
+                    <Text style={[styles.infoModalRowValue, { color: theme.success }]}>{selectedTreatment.price}</Text>
+                  </View>
+                )}
+                {selectedTreatment?.skinType != null && (
+                  <View style={[styles.infoModalRow, { borderBottomColor: theme.border }]}>
+                    <Text style={[styles.infoModalRowLabel, { color: theme.textTertiary }]}>{t("skinType")}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        marginRight: 8,
+                        backgroundColor: ['#FDDCB5','#E8B88A','#C68642','#8D5524','#4A2410'][selectedTreatment.skinType - 1],
+                        borderWidth: 1,
+                        borderColor: 'rgba(0,0,0,0.12)',
+                      }} />
+                      <Text style={[styles.infoModalRowValue, { color: theme.textPrimary }]}>
+                        {`Type ${selectedTreatment.skinType}`}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {selectedTreatment?.laserType && (
+                  <View style={[styles.infoModalRow, { borderBottomColor: theme.border }]}>
+                    <Text style={[styles.infoModalRowLabel, { color: theme.textTertiary }]}>{t("laserType")}</Text>
+                    <Text style={[styles.infoModalRowValue, { color: theme.textPrimary }]}>{selectedTreatment.laserType}</Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.infoModalCloseBtn, { backgroundColor: theme.primary }]}
+                onPress={() => setSelectedTreatment(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.infoModalCloseText}>{t("close")}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Delete Customer Modal */}
       <Modal
@@ -542,6 +698,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+  appointmentActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginLeft: "auto",
+  },
+  appointmentActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   appointmentDate: {
     fontSize: 17,
     fontWeight: "700",
@@ -552,22 +720,140 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   treatmentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 12,
     borderRadius: 12,
     marginBottom: 8,
   },
-  treatmentInfo: {
+  treatmentItemHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  infoBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   zoneText: {
     fontSize: 15,
+    fontWeight: "700",
+    flex: 1,
+    marginRight: 8,
+  },
+  infoModalCard: {
+    width: 300,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.25,
+    shadowRadius: 40,
+    elevation: 16,
+  },
+  infoModalIconBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  infoModalZone: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  infoModalRows: {
+    width: "100%",
+    marginBottom: 20,
+  },
+  infoModalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  infoModalRowLabel: {
+    fontSize: 13,
     fontWeight: "600",
   },
-  powerText: {
+  infoModalRowValue: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  infoModalNotesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  infoModalSkinRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoModalSkinDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.10)',
+  },
+  infoModalCloseBtn: {
+    width: "100%",
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  infoModalCloseText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  treatmentMetrics: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 4,
+  },
+  metricPill: {
+    alignItems: "center",
+    minWidth: 70,
+  },
+  metricLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  metricValue: {
     fontSize: 14,
     fontWeight: "700",
+  },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+  },
+  priceValue: {
+    fontSize: 15,
+    fontWeight: "800",
   },
   notesText: {
     fontSize: 14,
@@ -653,46 +939,51 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: -0.3,
   },
-  lastPowerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 10,
+  progressCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  lastPowerLabel: {
-    fontSize: 13,
-    fontWeight: "700",
+  visitsBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  visitsBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statsTable: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+  },
+  tableHeaderRow: {
+    paddingVertical: 7,
+  },
+  tableRowLabel: {
+    width: 52,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  tableColHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
     letterSpacing: 0.2,
   },
-  lastPowerValue: {
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  progressStats: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  statItem: {
-    width: "48%",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+  tableCell: {
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
   deleteModalOverlay: {
     flex: 1,

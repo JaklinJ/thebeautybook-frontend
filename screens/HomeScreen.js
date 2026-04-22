@@ -22,6 +22,7 @@ import { useTheme } from "../context/ThemeContext";
 import api from "../config/api";
 import LanguageSelector from "../components/LanguageSelector";
 import ThemeToggle from "../components/ThemeToggle";
+import { useSubscription, FREE_TIER_CLIENT_LIMIT } from "../context/SubscriptionContext";
 
 export default function HomeScreen({ navigation }) {
   const [customers, setCustomers] = useState([]);
@@ -52,6 +53,7 @@ export default function HomeScreen({ navigation }) {
   const { signOut, salon, updateSalon } = useContext(AuthContext);
   const { t } = useContext(LanguageContext);
   const { theme, isDark } = useTheme();
+  const { isPro } = useSubscription();
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -264,8 +266,22 @@ export default function HomeScreen({ navigation }) {
           </Text>
           <Text style={[styles.statValue, { color: theme.textPrimary }]}>
             {customers.length}
+            {!isPro && (
+              <Text style={[styles.statLimit, { color: theme.textTertiary }]}>
+                {' '}/ {FREE_TIER_CLIENT_LIMIT}
+              </Text>
+            )}
           </Text>
         </View>
+        {/* !isPro && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Paywall')}
+            style={[styles.upgradeChip, { backgroundColor: theme.primary + '18', borderColor: theme.primary + '35' }]}
+          >
+            <Ionicons name="star-outline" size={13} color={theme.primary} />
+            <Text style={[styles.upgradeChipText, { color: theme.primary }]}>Pro</Text>
+          </TouchableOpacity>
+        ) */}
       </View>
     </View>
   );
@@ -369,6 +385,35 @@ export default function HomeScreen({ navigation }) {
           borderColor: theme.border,
           shadowColor: theme.shadow
         }]}>
+          {isPro ? (
+            <View style={[styles.dropdownItem, { borderBottomColor: theme.border }]}>
+              <Ionicons name="star" size={20} color={theme.primary} />
+              <Text style={[styles.dropdownText, { color: theme.primary }]}>
+                {t('proActive')}
+              </Text>
+            </View>
+          ) : null}
+          <TouchableOpacity
+            style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+            onPress={() => { setShowProfileMenu(false); navigation.navigate('PriceList'); }}
+          >
+            <Ionicons name="pricetag-outline" size={20} color={theme.textPrimary} />
+            <Text style={[styles.dropdownText, { color: theme.textPrimary }]}>
+              {t('priceList')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+            onPress={() => {
+              setShowProfileMenu(false);
+              navigation.navigate('RevenueDashboard');
+            }}
+          >
+            <Ionicons name="bar-chart-outline" size={20} color={theme.textPrimary} />
+            <Text style={[styles.dropdownText, { color: theme.textPrimary }]}>
+              {t('revenue')}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
             onPress={handleEditProfile}
@@ -444,7 +489,13 @@ export default function HomeScreen({ navigation }) {
       {/* Elegant FAB */}
       <TouchableOpacity
         style={[styles.fab, { shadowColor: theme.primary }]}
-        onPress={() => setShowAddModal(true)}
+        onPress={() => {
+          // if (!isPro && customers.length >= FREE_TIER_CLIENT_LIMIT) {
+          //   navigation.navigate('Paywall', { fromLimit: true });
+          // } else {
+            setShowAddModal(true);
+          // }
+        }}
         activeOpacity={0.85}
       >
         <LinearGradient
@@ -1178,6 +1229,23 @@ const styles = StyleSheet.create({
   },
   statInfo: {
     flex: 1,
+  },
+  statLimit: {
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  upgradeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  upgradeChipText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   statLabel: {
     fontSize: 18,

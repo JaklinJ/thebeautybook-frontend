@@ -6,6 +6,7 @@ import { View, StyleSheet } from 'react-native';
 import { AuthContext } from './context/AuthContext';
 import { LanguageProvider, LanguageContext } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { SubscriptionProvider } from './context/SubscriptionContext';
 import AnimatedSplashScreen from './components/AnimatedSplashScreen';
 
 import LoginScreen from './screens/LoginScreen';
@@ -14,6 +15,9 @@ import HomeScreen from './screens/HomeScreen';
 import CustomerProfileScreen from './screens/CustomerProfileScreen';
 import AddAppointmentScreen from './screens/AddAppointmentScreen';
 import BodyMapScreen from './screens/BodyMapScreen';
+// import PaywallScreen from './screens/PaywallScreen';
+import PriceListScreen from './screens/PriceListScreen';
+import RevenueDashboardScreen from './screens/RevenueDashboardScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -105,6 +109,13 @@ function AppNavigator() {
                 <Stack.Screen name="CustomerProfile" component={CustomerProfileScreen} />
                 <Stack.Screen name="AddAppointment" component={AddAppointmentScreen} />
                 <Stack.Screen name="BodyMap" component={BodyMapScreen} />
+                {/* <Stack.Screen
+                  name="Paywall"
+                  component={PaywallScreen}
+                  options={{ presentation: 'modal' }}
+                /> */}
+                <Stack.Screen name="PriceList" component={PriceListScreen} />
+                <Stack.Screen name="RevenueDashboard" component={RevenueDashboardScreen} />
               </>
             )}
           </Stack.Navigator>
@@ -118,7 +129,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <AppNavigator />
+        <SubscriptionProvider>
+          <AppNavigator />
+        </SubscriptionProvider>
       </LanguageProvider>
     </ThemeProvider>
   );
