@@ -25,6 +25,19 @@ const SESSIONS_GOAL = 6;
 
 const LASER_TYPES = ['Diode', 'Alexandrite'];
 
+const COOLING_LEVELS = [
+  { value: 'low', labelKey: 'coolingLow' },
+  { value: 'medium', labelKey: 'coolingMedium' },
+  { value: 'high', labelKey: 'coolingHigh' },
+];
+
+const SKIN_REACTIONS = [
+  { value: 'none', labelKey: 'skinReactionNone', icon: 'checkmark-circle-outline' },
+  { value: 'mild', labelKey: 'skinReactionMild', icon: 'sunny-outline' },
+  { value: 'moderate', labelKey: 'skinReactionModerate', icon: 'warning-outline' },
+  { value: 'severe', labelKey: 'skinReactionSevere', icon: 'alert-circle-outline' },
+];
+
 const SKIN_TYPES = [
   { type: 1, color: '#FDDCB5', descKey: 'skinType1' },
   { type: 2, color: '#E8B88A', descKey: 'skinType2' },
@@ -206,6 +219,8 @@ export default function BodyMapScreen({ route, navigation }) {
   const [selectedTreatment, setSelectedTreatment] = useState(null);
   const [skinType, setSkinType] = useState(null);
   const [laserType, setLaserType] = useState(null);
+  const [newCooling, setNewCooling] = useState(null);
+  const [newSkinReaction, setNewSkinReaction] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -237,6 +252,8 @@ export default function BodyMapScreen({ route, navigation }) {
     setNewNotes('');
     setSkinType(null);
     setLaserType(null);
+    setNewCooling(null);
+    setNewSkinReaction(null);
     setShowAddModal(true);
   };
 
@@ -278,6 +295,8 @@ export default function BodyMapScreen({ route, navigation }) {
         notes: newNotes.trim() || undefined,
         skinType: skinType || undefined,
         laserType: laserType || undefined,
+        cooling: newCooling || undefined,
+        skinReaction: newSkinReaction || undefined,
       });
       setShowAddModal(false);
       await reloadProgress();
@@ -664,6 +683,12 @@ export default function BodyMapScreen({ route, navigation }) {
                   {selectedTreatment.laserType && (
                     <DetailRow icon="flash" label={t('laserType')} value={selectedTreatment.laserType} theme={theme} isDark={isDark} />
                   )}
+                  {selectedTreatment.cooling && (
+                    <DetailRow icon="snow-outline" label={t('cooling')} value={selectedTreatment.cooling} theme={theme} isDark={isDark} />
+                  )}
+                  {selectedTreatment.skinReaction && (
+                    <DetailRow icon="alert-circle-outline" label={t('skinReaction')} value={selectedTreatment.skinReaction} theme={theme} isDark={isDark} />
+                  )}
                   {selectedTreatment.notes ? (
                     <DetailRow icon="document-text-outline" label={t('notes')} value={selectedTreatment.notes} theme={theme} isDark={isDark} />
                   ) : null}
@@ -833,6 +858,34 @@ export default function BodyMapScreen({ route, navigation }) {
                 })}
               </View>
 
+              {/* Cooling */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('coolingOptional')}</Text>
+              <View style={styles.laserRow}>
+                {COOLING_LEVELS.map(level => {
+                  const selected = newCooling === level.value;
+                  return (
+                    <TouchableOpacity
+                      key={level.value}
+                      onPress={() => setNewCooling(selected ? null : level.value)}
+                      style={[styles.laserChip, {
+                        backgroundColor: selected ? theme.primary + '18' : (isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground),
+                        borderColor: selected ? theme.primary : theme.border,
+                      }]}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name="snow-outline"
+                        size={18}
+                        color={selected ? theme.primary : theme.textTertiary}
+                      />
+                      <Text style={[styles.laserChipText, { color: selected ? theme.primary : theme.textSecondary }]}>
+                        {t(level.labelKey)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               {/* Power field */}
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('power')} (J)</Text>
               <View style={[styles.fieldInput, {
@@ -899,6 +952,34 @@ export default function BodyMapScreen({ route, navigation }) {
                   placeholderTextColor={theme.textTertiary}
                   keyboardType="decimal-pad"
                 />
+              </View>
+
+              {/* Skin Reaction */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('skinReactionOptional')}</Text>
+              <View style={styles.reactionRow}>
+                {SKIN_REACTIONS.map(reaction => {
+                  const selected = newSkinReaction === reaction.value;
+                  return (
+                    <TouchableOpacity
+                      key={reaction.value}
+                      onPress={() => setNewSkinReaction(selected ? null : reaction.value)}
+                      style={[styles.reactionChip, {
+                        backgroundColor: selected ? theme.primary + '18' : (isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground),
+                        borderColor: selected ? theme.primary : theme.border,
+                      }]}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={reaction.icon}
+                        size={16}
+                        color={selected ? theme.primary : theme.textTertiary}
+                      />
+                      <Text style={[styles.reactionChipText, { color: selected ? theme.primary : theme.textSecondary }]}>
+                        {t(reaction.labelKey)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {/* Notes field */}
@@ -1121,9 +1202,12 @@ const styles = StyleSheet.create({
   skinSwatch: { width: 40, height: 40, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
   skinLabel: { fontSize: 12, fontWeight: '700' },
   skinDescription: { fontSize: 12, fontWeight: '500', textAlign: 'center', marginBottom: 6 },
-  laserRow: { flexDirection: 'row', gap: 12, marginBottom: 4 },
+  laserRow: { flexDirection: 'row', gap: 12, marginBottom: 4, width: '100%' },
   laserChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
   laserChipText: { fontSize: 14, fontWeight: '700' },
+  reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, width: '100%', marginBottom: 4 },
+  reactionChip: { flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
+  reactionChipText: { fontSize: 12, fontWeight: '700' },
 
   saveBtn: {
     marginTop: 20, marginBottom: 8, borderRadius: 16,

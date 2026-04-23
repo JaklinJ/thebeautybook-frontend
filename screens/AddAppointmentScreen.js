@@ -20,6 +20,19 @@ import api from "../config/api";
 
 const LASER_TYPES = ['Diode', 'Alexandrite'];
 
+const COOLING_LEVELS = [
+  { value: 'low', labelKey: 'coolingLow' },
+  { value: 'medium', labelKey: 'coolingMedium' },
+  { value: 'high', labelKey: 'coolingHigh' },
+];
+
+const SKIN_REACTIONS = [
+  { value: 'none', labelKey: 'skinReactionNone', icon: 'checkmark-circle-outline' },
+  { value: 'mild', labelKey: 'skinReactionMild', icon: 'sunny-outline' },
+  { value: 'moderate', labelKey: 'skinReactionModerate', icon: 'warning-outline' },
+  { value: 'severe', labelKey: 'skinReactionSevere', icon: 'alert-circle-outline' },
+];
+
 const SKIN_TYPES = [
   { type: 1, color: '#FDDCB5', descKey: 'skinType1' },
   { type: 2, color: '#E8B88A', descKey: 'skinType2' },
@@ -51,8 +64,12 @@ const ZONE_KEYS = [
 ];
 
 export default function AddAppointmentScreen({ route, navigation }) {
-  const { customer, appointment, isEditing } = route.params;
-  const [date, setDate] = useState(isEditing ? new Date(appointment.date) : new Date());
+  const { customer, appointment, isEditing, prefillDate } = route.params;
+  const [date, setDate] = useState(
+    isEditing ? new Date(appointment.date) :
+    prefillDate ? new Date(prefillDate + 'T00:00:00') :
+    new Date()
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInputText, setDateInputText] = useState("");
   const [treatments, setTreatments] = useState(
@@ -69,6 +86,8 @@ export default function AddAppointmentScreen({ route, navigation }) {
   const [notes, setNotes] = useState(isEditing ? (appointment.notes || "") : "");
   const [skinType, setSkinType] = useState(isEditing ? (appointment.skinType || null) : null);
   const [laserType, setLaserType] = useState(isEditing ? (appointment.laserType || null) : null);
+  const [cooling, setCooling] = useState(isEditing ? (appointment.cooling || null) : null);
+  const [skinReaction, setSkinReaction] = useState(isEditing ? (appointment.skinReaction || null) : null);
   const [loading, setLoading] = useState(false);
   const [priceList, setPriceList] = useState({});
   const scrollViewRef = useRef(null);
@@ -96,7 +115,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
     if (Platform.OS === "android") {
       setShowDatePicker(false);
     }
-    if (selectedDate && selectedDate <= new Date()) {
+    if (selectedDate) {
       setDate(selectedDate);
       setDateInputText(formatDateForInput(selectedDate));
     }
@@ -107,10 +126,8 @@ export default function AddAppointmentScreen({ route, navigation }) {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (dateRegex.test(text)) {
       const newDate = new Date(text + "T00:00:00");
-      if (!isNaN(newDate.getTime()) && newDate <= new Date()) {
+      if (!isNaN(newDate.getTime())) {
         setDate(newDate);
-      } else {
-        Alert.alert(t("error"), t("enterValidPower"));
       }
     }
   };
@@ -189,6 +206,8 @@ export default function AddAppointmentScreen({ route, navigation }) {
           treatments: treatmentsData,
           skinType: skinType || undefined,
           laserType: laserType || undefined,
+          cooling: cooling || undefined,
+          skinReaction: skinReaction || undefined,
           notes: notes.trim() || undefined,
         });
       } else {
@@ -198,6 +217,8 @@ export default function AddAppointmentScreen({ route, navigation }) {
           treatments: treatmentsData,
           skinType: skinType || undefined,
           laserType: laserType || undefined,
+          cooling: cooling || undefined,
+          skinReaction: skinReaction || undefined,
           notes: notes.trim() || undefined,
         });
       }
@@ -376,7 +397,6 @@ export default function AddAppointmentScreen({ route, navigation }) {
                       mode="date"
                       display="inline"
                       onChange={handleDateChange}
-                      maximumDate={new Date()}
                     />
                   </View>
                 </View>
@@ -456,6 +476,41 @@ export default function AddAppointmentScreen({ route, navigation }) {
                     />
                     <Text style={[styles.laserChipText, { color: selected ? theme.primary : theme.textSecondary }]}>
                       {laser}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Cooling */}
+          <View style={[styles.section, { backgroundColor: theme.card }]}>
+            <Text style={[styles.label, { color: theme.textPrimary }]}>
+              {t("coolingOptional")}
+            </Text>
+            <View style={styles.laserRow}>
+              {COOLING_LEVELS.map((level) => {
+                const selected = cooling === level.value;
+                return (
+                  <TouchableOpacity
+                    key={level.value}
+                    onPress={() => setCooling(selected ? null : level.value)}
+                    style={[
+                      styles.laserChip,
+                      {
+                        backgroundColor: selected ? theme.primary + '18' : theme.inputBackground,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="snow-outline"
+                      size={18}
+                      color={selected ? theme.primary : theme.textTertiary}
+                    />
+                    <Text style={[styles.laserChipText, { color: selected ? theme.primary : theme.textSecondary }]}>
+                      {t(level.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -641,6 +696,41 @@ export default function AddAppointmentScreen({ route, navigation }) {
                 {t("addZone")}
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Skin Reaction */}
+          <View style={[styles.section, { backgroundColor: theme.card }]}>
+            <Text style={[styles.label, { color: theme.textPrimary }]}>
+              {t("skinReactionOptional")}
+            </Text>
+            <View style={styles.reactionRow}>
+              {SKIN_REACTIONS.map((reaction) => {
+                const selected = skinReaction === reaction.value;
+                return (
+                  <TouchableOpacity
+                    key={reaction.value}
+                    onPress={() => setSkinReaction(selected ? null : reaction.value)}
+                    style={[
+                      styles.reactionChip,
+                      {
+                        backgroundColor: selected ? theme.primary + '18' : theme.inputBackground,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
+                    ]}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={reaction.icon}
+                      size={16}
+                      color={selected ? theme.primary : theme.textTertiary}
+                    />
+                    <Text style={[styles.reactionChipText, { color: selected ? theme.primary : theme.textSecondary }]}>
+                      {t(reaction.labelKey)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           <View style={[styles.section, { backgroundColor: theme.card }]}>
@@ -910,6 +1000,7 @@ const styles = StyleSheet.create({
   laserRow: {
     flexDirection: 'row',
     gap: 12,
+    width: '100%',
   },
   laserChip: {
     flex: 1,
@@ -923,6 +1014,27 @@ const styles = StyleSheet.create({
   },
   laserChipText: {
     fontSize: 15,
+    fontWeight: '700',
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    width: '100%',
+  },
+  reactionChip: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  reactionChipText: {
+    fontSize: 12,
     fontWeight: '700',
   },
   skinRow: {

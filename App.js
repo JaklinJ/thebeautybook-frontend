@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from './context/AuthContext';
 import { LanguageProvider, LanguageContext } from './context/LanguageContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import AnimatedSplashScreen from './components/AnimatedSplashScreen';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
+import CalendarScreen from './screens/CalendarScreen';
 import CustomerProfileScreen from './screens/CustomerProfileScreen';
 import AddAppointmentScreen from './screens/AddAppointmentScreen';
 import BodyMapScreen from './screens/BodyMapScreen';
@@ -20,6 +23,50 @@ import PriceListScreen from './screens/PriceListScreen';
 import RevenueDashboardScreen from './screens/RevenueDashboardScreen';
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+function MainTabs() {
+  const { theme, isDark } = useTheme();
+  const { t } = useContext(LanguageContext);
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: isDark ? 'rgba(15,20,35,0.98)' : theme.surface,
+          borderTopColor: theme.border,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 85 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 26 : 10,
+          paddingTop: 8,
+        },
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textTertiary,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
+        tabBarIcon: ({ focused, color }) => {
+          if (route.name === 'HomeTab') {
+            return <Ionicons name={focused ? 'people' : 'people-outline'} size={24} color={color} />;
+          }
+          if (route.name === 'CalendarTab') {
+            return <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />;
+          }
+        },
+      })}
+    >
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeScreen}
+        options={{ tabBarLabel: t('clients') }}
+      />
+      <Tab.Screen
+        name="CalendarTab"
+        component={CalendarScreen}
+        options={{ tabBarLabel: t('calendar') }}
+      />
+    </Tab.Navigator>
+  );
+}
 
 function AppNavigator() {
   const [isLoading, setIsLoading] = useState(true);
@@ -105,7 +152,7 @@ function AppNavigator() {
               </>
             ) : (
               <>
-                <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="Main" component={MainTabs} />
                 <Stack.Screen name="CustomerProfile" component={CustomerProfileScreen} />
                 <Stack.Screen name="AddAppointment" component={AddAppointmentScreen} />
                 <Stack.Screen name="BodyMap" component={BodyMapScreen} />

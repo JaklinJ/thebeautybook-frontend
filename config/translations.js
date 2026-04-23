@@ -103,6 +103,17 @@ export const translations = {
     skinTypeOptional: "Skin Type (optional)",
     laserType: "Laser Type",
     laserTypeOptional: "Laser Type (optional)",
+    cooling: "Cooling",
+    coolingOptional: "Cooling (optional)",
+    coolingLow: "Low",
+    coolingMedium: "Medium",
+    coolingHigh: "High",
+    skinReaction: "Skin Reaction",
+    skinReactionOptional: "Skin Reaction (optional)",
+    skinReactionNone: "None",
+    skinReactionMild: "Mild redness",
+    skinReactionModerate: "Moderate",
+    skinReactionSevere: "Severe",
     skinType1: "Type I — Very fair, always burns",
     skinType2: "Type II — Fair, burns easily",
     skinType3: "Type III — Medium, sometimes burns",
@@ -175,6 +186,13 @@ export const translations = {
     saving: "Saving...",
     saveAppointment: "Save Appointment",
     
+    // Calendar
+    calendar: "Calendar",
+    clients: "Clients",
+    today: "Today",
+    noAppointmentsDay: "No appointments this day",
+    selectClient: "Select Client",
+
     // Language
     language: "Language",
     selectLanguage: "Select Language",
@@ -337,6 +355,17 @@ export const translations = {
     skinTypeOptional: "Тип кожа (пожелание)",
     laserType: "Тип лазер",
     laserTypeOptional: "Тип лазер (пожелание)",
+    cooling: "Охлаждане",
+    coolingOptional: "Охлаждане (по желание)",
+    coolingLow: "Ниско",
+    coolingMedium: "Средно",
+    coolingHigh: "Високо",
+    skinReaction: "Кожна реакция",
+    skinReactionOptional: "Кожна реакция (по желание)",
+    skinReactionNone: "Няма",
+    skinReactionMild: "Леко зачервяване",
+    skinReactionModerate: "Умерено",
+    skinReactionSevere: "Силно",
     skinType1: "Тип I — Много светла, винаги изгаря",
     skinType2: "Тип II — Светла, лесно изгаря",
     skinType3: "Тип III — Средна, понякога изгаря",
@@ -407,6 +436,13 @@ export const translations = {
     saving: "Запазване...",
     saveAppointment: "Запази посещение",
     
+    // Calendar
+    calendar: "Календар",
+    clients: "Клиенти",
+    today: "Днес",
+    noAppointmentsDay: "Няма записвания за тази дата",
+    selectClient: "Избери клиент",
+
     // Language
     language: "Език",
     selectLanguage: "Избери език",
