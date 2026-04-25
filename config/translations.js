@@ -75,6 +75,9 @@ export const translations = {
     appointments: "Appointments",
     addAppointment: "Add Appointment",
     noAppointments: "No appointments yet",
+    editCustomer: "Edit Client",
+    saveChanges: "Save Changes",
+    editCustomerFailed: "Failed to update client",
     deleteCustomer: "Delete Customer",
     deleteCustomerConfirm: "Are you sure you want to delete this customer?",
     deleteCustomerFailed: "Failed to delete customer",
@@ -192,6 +195,16 @@ export const translations = {
     today: "Today",
     noAppointmentsDay: "No appointments this day",
     selectClient: "Select Client",
+    scheduleFor: "Schedule for",
+    saveEntry: "Save Entry",
+    deleteEntry: "Delete Entry",
+    deleteEntryConfirm: "Remove this entry from the schedule?",
+    selectZones: "Select Zones",
+    appointmentTime: "Time",
+    appointmentDuration: "Duration",
+    tapSlotToAdd: "Tap a free slot on the timeline to schedule",
+    minShort: "min",
+    viewProfile: "View Profile",
 
     // Language
     language: "Language",
@@ -211,6 +224,14 @@ export const translations = {
     groupTorso: "Torso",
     groupArms: "Arms",
     groupLowerBody: "Lower Body",
+
+    // Zone Duration
+    zoneDuration: "Zone Duration",
+    zoneDurationHint: "Set your working time per zone. The calendar will use these times when scheduling appointments.",
+    zoneDurationSaved: "Zone durations saved successfully",
+    zoneDurationFooter: "These times are personal to your account and won't affect other technicians.",
+    failedToSaveZoneDuration: "Failed to save zone durations",
+    saveZoneDurations: "Save Zone Durations",
 
     // Revenue Dashboard
     revenue: "Revenue",
@@ -327,6 +348,9 @@ export const translations = {
     appointments: "Посещения",
     addAppointment: "Добави посещение",
     noAppointments: "Все още няма посещения",
+    editCustomer: "Редактирай клиент",
+    saveChanges: "Запази промените",
+    editCustomerFailed: "Неуспешна актуализация на клиент",
     deleteCustomer: "Изтриване на клиент",
     deleteCustomerConfirm: "Сигурни ли сте, че искате да изтриете този клиент?",
     deleteCustomerFailed: "Неуспешно изтриване на клиент",
@@ -442,6 +466,16 @@ export const translations = {
     today: "Днес",
     noAppointmentsDay: "Няма записвания за тази дата",
     selectClient: "Избери клиент",
+    scheduleFor: "Планирай за",
+    saveEntry: "Запази запис",
+    deleteEntry: "Изтрий запис",
+    deleteEntryConfirm: "Премахни този запис от графика?",
+    selectZones: "Избери зони",
+    appointmentTime: "Час",
+    appointmentDuration: "Продължителност",
+    tapSlotToAdd: "Докоснете свободен час от времевата линия за резервация",
+    minShort: "мин",
+    viewProfile: "Виж профил",
 
     // Language
     language: "Език",
@@ -461,6 +495,14 @@ export const translations = {
     groupTorso: "Торс",
     groupArms: "Ръце",
     groupLowerBody: "Долна половина",
+
+    // Zone Duration
+    zoneDuration: "Времетраене по зона",
+    zoneDurationHint: "Задайте вашето работно време за всяка зона. Календарът ще използва тези времена при планиране на часове.",
+    zoneDurationSaved: "Времетраенето по зони е запазено успешно",
+    zoneDurationFooter: "Тези времена са лични за вашия акаунт и не влияят на другите лазерни техници.",
+    failedToSaveZoneDuration: "Неуспешно запазване на времетраенето по зони",
+    saveZoneDurations: "Запази времетраенето",
 
     // Revenue Dashboard
     revenue: "Приходи",

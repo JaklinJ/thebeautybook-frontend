@@ -82,7 +82,7 @@ export default function PriceListScreen({ navigation }) {
     try {
       await api.put('/pricelists', { prices });
       Alert.alert(t('success'), t('priceListSaved'), [
-        { text: 'OK', onPress: () => navigation.navigate('Home') },
+        { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       Alert.alert(t('error'), error.response?.data?.message || t('failedToSavePriceList'));

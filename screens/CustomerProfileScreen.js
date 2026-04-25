@@ -11,15 +11,20 @@ import {
   ActivityIndicator,
   ScrollView,
   StatusBar,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { LanguageContext } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { useCurrency } from "../context/CurrencyContext";
 import api from "../config/api";
 
 export default function CustomerProfileScreen({ route, navigation }) {
-  const { customer } = route.params;
+  const { customer: initialCustomer } = route.params;
+  const [customerData, setCustomerData] = useState(initialCustomer);
   const [appointments, setAppointments] = useState([]);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -27,8 +32,18 @@ export default function CustomerProfileScreen({ route, navigation }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingAppointmentId, setDeletingAppointmentId] = useState(null);
   const [selectedTreatment, setSelectedTreatment] = useState(null);
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
   const { t } = React.useContext(LanguageContext);
   const { theme, isDark } = useTheme();
+  const { formatPrice } = useCurrency();
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -42,7 +57,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
   const loadAppointments = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/appointments/customer/${customer._id}`);
+      const response = await api.get(`/appointments/customer/${customerData._id}`);
       setAppointments(response.data);
     } catch (error) {
       Alert.alert(t("error"), t("failedToLoadAppointments"));
@@ -55,7 +70,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
   const loadProgress = async () => {
     try {
       const response = await api.get(
-        `/appointments/customer/${customer._id}/progress`
+        `/appointments/customer/${customerData._id}/progress`
       );
       setProgress(response.data);
     } catch (error) {
@@ -64,11 +79,42 @@ export default function CustomerProfileScreen({ route, navigation }) {
   };
 
   const handleAddAppointment = () => {
-    navigation.navigate("AddAppointment", { customer });
+    navigation.navigate("AddAppointment", { customer: customerData });
   };
 
   const handleEditAppointment = (appointment) => {
-    navigation.navigate("AddAppointment", { customer, appointment, isEditing: true });
+    navigation.navigate("AddAppointment", { customer: customerData, appointment, isEditing: true });
+  };
+
+  const handleOpenEdit = () => {
+    setEditName(customerData.name || '');
+    setEditPhone(customerData.phone || '');
+    setEditEmail(customerData.email || '');
+    setEditNotes(customerData.notes || '');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName.trim()) {
+      Alert.alert(t("error"), t("enterCustomerName"));
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await api.put(`/customers/${customerData._id}`, {
+        name:  editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+        notes: editNotes.trim(),
+      });
+      setCustomerData(response.data);
+      setShowEditModal(false);
+    } catch (error) {
+      console.error("Update customer error:", error);
+      Alert.alert(t("error"), t("editCustomerFailed"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteAppointment = (appointment) => {
@@ -103,7 +149,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
 
   const confirmDeleteCustomer = async () => {
     try {
-      await api.delete(`/customers/${customer._id}`);
+      await api.delete(`/customers/${customerData._id}`);
       setShowDeleteModal(false);
       navigation.goBack();
     } catch (error) {
@@ -162,7 +208,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
             activeOpacity={0.75}
           >
             <Text style={[styles.zoneText, { color: theme.textPrimary }]}>
-              {treatment.zone}
+              {t(treatment.zone)}
             </Text>
             <Ionicons name="information-circle-outline" size={18} color={theme.primary} />
           </TouchableOpacity>
@@ -207,7 +253,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
       }]}>
         {/* Zone name + visits */}
         <View style={styles.progressCardHeader}>
-          <Text style={[styles.progressZone, { color: theme.textPrimary }]}>{item.zone}</Text>
+          <Text style={[styles.progressZone, { color: theme.textPrimary }]}>{t(item.zone)}</Text>
           <View style={[styles.visitsBadge, { backgroundColor: theme.primary + '18' }]}>
             <Text style={[styles.visitsBadgeText, { color: theme.primary }]}>
               {item.totalVisits} {t('visits')}
@@ -278,7 +324,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        {/* Top row: back + delete */}
+        {/* Top row: back + edit + delete */}
         <View style={styles.headerTopRow}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <View style={[styles.headerIconBtn, {
@@ -287,11 +333,20 @@ export default function CustomerProfileScreen({ route, navigation }) {
               <Ionicons name="arrow-back" size={20} color={theme.textPrimary} />
             </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDeleteCustomer} style={styles.deleteButton}>
-            <View style={[styles.headerIconBtn, { backgroundColor: theme.error + '1A' }]}>
-              <Ionicons name="trash-outline" size={20} color={theme.error} />
-            </View>
-          </TouchableOpacity>
+          <View style={styles.headerRightBtns}>
+            <TouchableOpacity onPress={handleOpenEdit}>
+              <View style={[styles.headerIconBtn, {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              }]}>
+                <Ionicons name="create-outline" size={20} color={theme.textPrimary} />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDeleteCustomer}>
+              <View style={[styles.headerIconBtn, { backgroundColor: theme.error + '1A' }]}>
+                <Ionicons name="trash-outline" size={20} color={theme.error} />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Centered profile */}
@@ -303,21 +358,21 @@ export default function CustomerProfileScreen({ route, navigation }) {
             end={{ x: 1, y: 1 }}
           >
             <Text style={styles.profileAvatarText}>
-              {customer.name?.[0]?.toUpperCase() || '?'}
+              {customerData.name?.[0]?.toUpperCase() || '?'}
             </Text>
           </LinearGradient>
           <Text style={[styles.customerName, { color: theme.textPrimary }]}>
-            {customer.name}
+            {customerData.name}
           </Text>
-          {customer.phone && (
+          {customerData.phone && (
             <TouchableOpacity
               style={styles.phoneRow}
-              onPress={() => Linking.openURL(`tel:${customer.phone}`)}
+              onPress={() => Linking.openURL(`tel:${customerData.phone}`)}
               activeOpacity={0.7}
             >
               <Ionicons name="call-outline" size={13} color={theme.primary} />
               <Text style={[styles.customerPhone, { color: theme.primary }]}>
-                {customer.phone}
+                {customerData.phone}
               </Text>
             </TouchableOpacity>
           )}
@@ -331,7 +386,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
             style={[styles.tab, activeTab === tab && { borderBottomColor: theme.primary }]}
             onPress={() => {
               if (tab === 'map') {
-                navigation.navigate('BodyMap', { customer, progress });
+                navigation.navigate('BodyMap', { customer: customerData, progress });
               } else {
                 setActiveTab(tab);
               }
@@ -432,7 +487,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
                 <Ionicons name="body-outline" size={30} color={theme.primary} />
               </View>
               <Text style={[styles.infoModalZone, { color: theme.textPrimary }]}>
-                {selectedTreatment?.zone}
+                {t(selectedTreatment?.zone)}
               </Text>
 
               <View style={styles.infoModalRows}>
@@ -455,7 +510,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
                 {selectedTreatment?.price > 0 && (
                   <View style={[styles.infoModalRow, { borderBottomColor: theme.border }]}>
                     <Text style={[styles.infoModalRowLabel, { color: theme.textTertiary }]}>{t("price")}</Text>
-                    <Text style={[styles.infoModalRowValue, { color: theme.success }]}>{selectedTreatment.price}</Text>
+                    <Text style={[styles.infoModalRowValue, { color: theme.success }]}>{formatPrice(selectedTreatment.price)}</Text>
                   </View>
                 )}
                 {selectedTreatment?.skinType != null && (
@@ -530,7 +585,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
                 borderColor: theme.error + '35',
               }]}>
                 <Text style={[styles.deleteModalName, { color: theme.error }]}>
-                  {customer.name}
+                  {customerData.name}
                 </Text>
               </View>
 
@@ -568,6 +623,139 @@ export default function CustomerProfileScreen({ route, navigation }) {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+      {/* Edit Customer Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setShowEditModal(false)}
+            style={[styles.deleteModalOverlay, { backgroundColor: theme.overlay }]}
+          >
+            <View
+              style={[styles.editModalCard, {
+                backgroundColor: isDark ? 'rgba(21,27,43,0.99)' : 'rgba(255,255,255,0.99)',
+                borderColor: isDark ? theme.glassCardBorder : theme.border,
+              }]}
+              onStartShouldSetResponder={() => true}
+            >
+                {/* Icon + title */}
+                <View style={[styles.deleteModalIconBadge, { backgroundColor: theme.primary + '18' }]}>
+                  <Ionicons name="person-outline" size={32} color={theme.primary} />
+                </View>
+                <Text style={[styles.deleteModalTitle, { color: theme.textPrimary }]}>
+                  {t('editCustomer')}
+                </Text>
+
+                {/* Fields */}
+                <View style={styles.editFields}>
+                  <View style={[styles.editField, {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : theme.inputBackground,
+                    borderColor: theme.border,
+                  }]}>
+                    <Ionicons name="person-outline" size={16} color={theme.textTertiary} style={styles.editFieldIcon} />
+                    <TextInput
+                      style={[styles.editInput, { color: theme.textPrimary }]}
+                      value={editName}
+                      onChangeText={setEditName}
+                      placeholder={t('customerName')}
+                      placeholderTextColor={theme.textTertiary}
+                    />
+                  </View>
+
+                  <View style={[styles.editField, {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : theme.inputBackground,
+                    borderColor: theme.border,
+                  }]}>
+                    <Ionicons name="call-outline" size={16} color={theme.textTertiary} style={styles.editFieldIcon} />
+                    <TextInput
+                      style={[styles.editInput, { color: theme.textPrimary }]}
+                      value={editPhone}
+                      onChangeText={setEditPhone}
+                      placeholder={t('customerPhone')}
+                      placeholderTextColor={theme.textTertiary}
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+
+                  <View style={[styles.editField, {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : theme.inputBackground,
+                    borderColor: theme.border,
+                  }]}>
+                    <Ionicons name="mail-outline" size={16} color={theme.textTertiary} style={styles.editFieldIcon} />
+                    <TextInput
+                      style={[styles.editInput, { color: theme.textPrimary }]}
+                      value={editEmail}
+                      onChangeText={setEditEmail}
+                      placeholder={t('customerEmail')}
+                      placeholderTextColor={theme.textTertiary}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+
+                  <View style={[styles.editField, {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : theme.inputBackground,
+                    borderColor: theme.border,
+                    alignItems: 'flex-start',
+                    height: 80,
+                  }]}>
+                    <Ionicons name="document-text-outline" size={16} color={theme.textTertiary} style={[styles.editFieldIcon, { marginTop: 14 }]} />
+                    <TextInput
+                      style={[styles.editInput, { color: theme.textPrimary, paddingTop: 12 }]}
+                      value={editNotes}
+                      onChangeText={setEditNotes}
+                      placeholder={t('customerNotes')}
+                      placeholderTextColor={theme.textTertiary}
+                      multiline
+                    />
+                  </View>
+                </View>
+
+                {/* Buttons */}
+                <View style={styles.deleteModalButtons}>
+                  <TouchableOpacity
+                    style={[styles.deleteModalCancelBtn, {
+                      borderColor: theme.border,
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                    }]}
+                    onPress={() => setShowEditModal(false)}
+                    activeOpacity={0.7}
+                    disabled={saving}
+                  >
+                    <Text style={[styles.deleteModalCancelText, { color: theme.textSecondary }]}>
+                      {t('cancel')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.editSaveBtn, { backgroundColor: theme.primary, shadowColor: theme.primary, opacity: saving ? 0.7 : 1 }]}
+                    onPress={handleSaveEdit}
+                    activeOpacity={0.85}
+                    disabled={saving}
+                  >
+                    {saving
+                      ? <ActivityIndicator size="small" color={isDark ? '#111' : '#fff'} />
+                      : <>
+                          <Ionicons name="checkmark" size={18} color={isDark ? '#111' : '#fff'} />
+                          <Text style={[styles.deleteModalDeleteText, { color: isDark ? '#111' : '#fff' }]}>
+                            {t('saveChanges')}
+                          </Text>
+                        </>
+                    }
+                  </TouchableOpacity>
+                </View>
+              </View>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </LinearGradient>
   );
@@ -616,7 +804,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButton: {},
-  deleteButton: {},
+  headerRightBtns: { flexDirection: 'row', gap: 10 },
   headerIconBtn: {
     width: 40,
     height: 40,
@@ -1071,5 +1259,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: '#fff',
+  },
+  editModalCard: {
+    width: '100%',
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.25,
+    shadowRadius: 40,
+    elevation: 16,
+  },
+  editFields: {
+    width: '100%',
+    gap: 10,
+    marginBottom: 24,
+  },
+  editField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 50,
+  },
+  editFieldIcon: {
+    marginRight: 10,
+  },
+  editInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  editSaveBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
   },
 });

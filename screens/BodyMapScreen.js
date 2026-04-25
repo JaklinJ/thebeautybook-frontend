@@ -150,6 +150,11 @@ const ZONE_CONFIG = [
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const matchZoneId = (zoneName) => {
+  if (!zoneName) return null;
+  // New format: stable zone key (e.g. "zoneFace")
+  const byKey = ZONE_CONFIG.find(z => z.zoneKey === zoneName);
+  if (byKey) return byKey.id;
+  // Legacy format: translated string (e.g. "Face", "Лице")
   const lower = zoneName.toLowerCase().trim();
   for (const z of ZONE_CONFIG) {
     if (z.keywords.includes(lower)) return z.id;
@@ -450,7 +455,7 @@ export default function BodyMapScreen({ route, navigation }) {
                 </Text>
                 {selectedData?.zoneNames?.length > 0 && (
                   <Text style={[styles.detailZoneSub, { color: theme.textTertiary }]}>
-                    {selectedData.zoneNames.join(' · ')}
+                    {selectedData.zoneNames.map(z => t(z)).join(' · ')}
                   </Text>
                 )}
               </View>
@@ -550,12 +555,10 @@ export default function BodyMapScreen({ route, navigation }) {
                 {(() => {
                   let history = selectedData.treatments;
                   if (selectedId === 'face' && faceSubzone !== 'zoneFace') {
-                    const subLabel = t(faceSubzone).toLowerCase();
-                    history = history.filter(tr => tr.zone?.toLowerCase() === subLabel);
+                    history = history.filter(tr => tr.zone === faceSubzone);
                   }
                   if (selectedId === 'bikini' && intimateSubzone !== 'zoneIntimate') {
-                    const subLabel = t(intimateSubzone).toLowerCase();
-                    history = history.filter(tr => tr.zone?.toLowerCase() === subLabel);
+                    history = history.filter(tr => tr.zone === intimateSubzone);
                   }
                   return history.slice(0, 10);
                 })().map((tr, i) => (
@@ -668,7 +671,7 @@ export default function BodyMapScreen({ route, navigation }) {
               {selectedTreatment && (
                 <View style={styles.detailModalBody}>
                   {selectedTreatment.zone && (
-                    <DetailRow icon="body-outline" label={t('zone')} value={selectedTreatment.zone} theme={theme} isDark={isDark} />
+                    <DetailRow icon="body-outline" label={t('zone')} value={t(selectedTreatment.zone)} theme={theme} isDark={isDark} />
                   )}
                   <DetailRow icon="flash-outline" label={t('power')} value={`${selectedTreatment.power} J`} theme={theme} isDark={isDark} highlight />
                   {selectedTreatment.pulseWidth != null && (

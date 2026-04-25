@@ -9,6 +9,7 @@ import { AuthContext } from './context/AuthContext';
 import { LanguageProvider, LanguageContext } from './context/LanguageContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import AnimatedSplashScreen from './components/AnimatedSplashScreen';
 
 import LoginScreen from './screens/LoginScreen';
@@ -20,6 +21,7 @@ import AddAppointmentScreen from './screens/AddAppointmentScreen';
 import BodyMapScreen from './screens/BodyMapScreen';
 // import PaywallScreen from './screens/PaywallScreen';
 import PriceListScreen from './screens/PriceListScreen';
+import ZoneDurationScreen from './screens/ZoneDurationScreen';
 import RevenueDashboardScreen from './screens/RevenueDashboardScreen';
 
 const Stack = createNativeStackNavigator();
@@ -136,6 +138,7 @@ function AppNavigator() {
 
   return (
     <AuthContext.Provider value={authContext}>
+      <CurrencyProvider>
       {showSplash && (
         <AnimatedSplashScreen
           isAppReady={appReady}
@@ -162,12 +165,14 @@ function AppNavigator() {
                   options={{ presentation: 'modal' }}
                 /> */}
                 <Stack.Screen name="PriceList" component={PriceListScreen} />
+                <Stack.Screen name="ZoneDuration" component={ZoneDurationScreen} />
                 <Stack.Screen name="RevenueDashboard" component={RevenueDashboardScreen} />
               </>
             )}
           </Stack.Navigator>
         </NavigationContainer>
       )}
+      </CurrencyProvider>
     </AuthContext.Provider>
   );
 }

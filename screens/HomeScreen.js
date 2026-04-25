@@ -46,7 +46,18 @@ export default function HomeScreen({ navigation }) {
     email: "",
     phone: "",
     address: "",
+    currency: "EUR",
   });
+
+  const CURRENCIES = [
+    { symbol: 'лв',  label: 'BGN' },
+    { symbol: '€',   label: 'EUR' },
+    { symbol: '$',   label: 'USD' },
+    { symbol: '£',   label: 'GBP' },
+    { symbol: '₺',   label: 'TRY' },
+    { symbol: 'RON', label: 'RON' },
+    { symbol: 'CHF', label: 'CHF' },
+  ];
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -85,6 +96,7 @@ export default function HomeScreen({ navigation }) {
         email: salon.email || "",
         phone: salon.phone || "",
         address: salon.address || "",
+        currency: salon.currency || "EUR",
       });
     }
   }, [salon]);
@@ -404,6 +416,15 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+            onPress={() => { setShowProfileMenu(false); navigation.navigate('ZoneDuration'); }}
+          >
+            <Ionicons name="time-outline" size={20} color={theme.textPrimary} />
+            <Text style={[styles.dropdownText, { color: theme.textPrimary }]}>
+              {t('zoneDuration')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
             onPress={() => {
               setShowProfileMenu(false);
               navigation.navigate('RevenueDashboard');
@@ -599,10 +620,10 @@ export default function HomeScreen({ navigation }) {
                     Address
                   </Text>
                   <TextInput
-                    style={[styles.textInput, styles.textArea, { 
-                      backgroundColor: theme.inputBackground, 
-                      color: theme.textPrimary, 
-                      borderColor: theme.border 
+                    style={[styles.textInput, styles.textArea, {
+                      backgroundColor: theme.inputBackground,
+                      color: theme.textPrimary,
+                      borderColor: theme.border
                     }]}
                     placeholder="Address"
                     value={editProfile.address}
@@ -613,6 +634,35 @@ export default function HomeScreen({ navigation }) {
                     numberOfLines={3}
                     placeholderTextColor={theme.textTertiary}
                   />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                    Currency
+                  </Text>
+                  <View style={styles.currencyRow}>
+                    {CURRENCIES.map(({ symbol, label }) => {
+                      const selected = editProfile.currency === symbol;
+                      return (
+                        <TouchableOpacity
+                          key={symbol}
+                          onPress={() => setEditProfile({ ...editProfile, currency: symbol })}
+                          style={[styles.currencyChip, {
+                            backgroundColor: selected ? theme.primary : theme.inputBackground,
+                            borderColor: selected ? theme.primary : theme.border,
+                          }]}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.currencyChipSymbol, { color: selected ? (isDark ? '#111' : '#fff') : theme.textPrimary }]}>
+                            {symbol}
+                          </Text>
+                          <Text style={[styles.currencyChipLabel, { color: selected ? (isDark ? '#111' : '#fff') : theme.textTertiary }]}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
               </ScrollView>
 
@@ -1426,6 +1476,23 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     paddingTop: 18,
   },
+  currencyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  currencyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  currencyChipSymbol: { fontSize: 15, fontWeight: '800' },
+  currencyChipLabel: { fontSize: 11, fontWeight: '600' },
   modalFooter: {
     flexDirection: 'row',
     paddingHorizontal: 24,

@@ -95,8 +95,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
   const { t } = React.useContext(LanguageContext);
   const { theme, isDark } = useTheme();
 
-  // Create translated zones array
-  const COMMON_ZONES = ZONE_KEYS.map((key) => t(key));
+  const ZONE_KEY_SET = new Set(ZONE_KEYS);
 
   // Initialize date input text and load price list
   React.useEffect(() => {
@@ -155,7 +154,8 @@ export default function AddAppointmentScreen({ route, navigation }) {
     newTreatments[index][field] = value;
     // Auto-fill price when zone is selected
     if (field === 'zone') {
-      const zoneKey = ZONE_KEYS.find(k => t(k) === value);
+      // value is a key when a chip is tapped, or raw text when typed manually
+      const zoneKey = ZONE_KEY_SET.has(value) ? value : ZONE_KEYS.find(k => t(k) === value);
       if (zoneKey && priceList[zoneKey] !== undefined) {
         newTreatments[index].price = String(priceList[zoneKey]);
       }
@@ -546,36 +546,36 @@ export default function AddAppointmentScreen({ route, navigation }) {
                     nestedScrollEnabled={true}
                   >
                     <View style={styles.zoneChipsContainer}>
-                      {COMMON_ZONES.map((zone) => (
+                      {ZONE_KEYS.map((key) => (
                         <TouchableOpacity
-                          key={zone}
+                          key={key}
                           style={[
                             styles.zoneChip,
                             {
                               backgroundColor:
-                                treatment.zone === zone
+                                treatment.zone === key
                                   ? theme.primary + "20"
                                   : theme.surfaceSecondary,
                               borderColor:
-                                treatment.zone === zone
+                                treatment.zone === key
                                   ? theme.primary
                                   : theme.border,
                             },
                           ]}
-                          onPress={() => updateTreatment(index, "zone", zone)}
+                          onPress={() => updateTreatment(index, "zone", key)}
                         >
                           <Text
                             style={[
                               styles.zoneChipText,
                               {
                                 color:
-                                  treatment.zone === zone
+                                  treatment.zone === key
                                     ? theme.primary
                                     : theme.textSecondary,
                               },
                             ]}
                           >
-                            {zone}
+                            {t(key)}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -591,7 +591,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
                       },
                     ]}
                     placeholder={t("customZonePlaceholder")}
-                    value={treatment.zone}
+                    value={ZONE_KEY_SET.has(treatment.zone) ? t(treatment.zone) : treatment.zone}
                     onChangeText={(value) => updateTreatment(index, "zone", value)}
                     placeholderTextColor={theme.textTertiary}
                   />

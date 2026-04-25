@@ -10,6 +10,7 @@ import * as Sharing from 'expo-sharing';
 import { Share } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
+import { useCurrency } from '../context/CurrencyContext';
 import api from '../config/api';
 
 const MONTH_NAMES = [
@@ -27,6 +28,7 @@ export default function RevenueDashboardScreen({ navigation }) {
   const [exporting, setExporting] = useState(false);
   const { theme, isDark } = useTheme();
   const { t } = useContext(LanguageContext);
+  const { currency, formatPrice } = useCurrency();
 
   useEffect(() => {
     loadRevenue();
@@ -61,7 +63,7 @@ export default function RevenueDashboardScreen({ navigation }) {
   };
 
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
-  const formatMoney = (n) => Number(n || 0).toFixed(2);
+  const formatMoney = (n) => `${Number(n || 0).toFixed(2)} ${currency}`;
   const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
 
   // --- Export PDF ---
