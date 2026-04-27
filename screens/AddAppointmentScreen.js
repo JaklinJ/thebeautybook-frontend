@@ -64,7 +64,7 @@ const ZONE_KEYS = [
 ];
 
 export default function AddAppointmentScreen({ route, navigation }) {
-  const { customer, appointment, isEditing, prefillDate } = route.params;
+  const { customer, appointment, isEditing, prefillDate, lastAppointment } = route.params;
   const [date, setDate] = useState(
     isEditing ? new Date(appointment.date) :
     prefillDate ? new Date(prefillDate + 'T00:00:00') :
@@ -81,12 +81,20 @@ export default function AddAppointmentScreen({ route, navigation }) {
           frequency: t.frequency != null ? String(t.frequency) : "",
           price: t.price ? String(t.price) : "",
         }))
+      : lastAppointment
+      ? lastAppointment.treatments.map(t => ({
+          zone: t.zone,
+          power: String(t.power),
+          pulseWidth: t.pulseWidth != null ? String(t.pulseWidth) : "",
+          frequency: t.frequency != null ? String(t.frequency) : "",
+          price: t.price ? String(t.price) : "",
+        }))
       : [{ zone: "", power: "", pulseWidth: "", frequency: "", price: "" }]
   );
   const [notes, setNotes] = useState(isEditing ? (appointment.notes || "") : "");
-  const [skinType, setSkinType] = useState(isEditing ? (appointment.skinType || null) : null);
-  const [laserType, setLaserType] = useState(isEditing ? (appointment.laserType || null) : null);
-  const [cooling, setCooling] = useState(isEditing ? (appointment.cooling || null) : null);
+  const [skinType, setSkinType] = useState(isEditing ? (appointment.skinType || null) : (lastAppointment?.skinType || null));
+  const [laserType, setLaserType] = useState(isEditing ? (appointment.laserType || null) : (lastAppointment?.laserType || null));
+  const [cooling, setCooling] = useState(isEditing ? (appointment.cooling || null) : (lastAppointment?.cooling || null));
   const [skinReaction, setSkinReaction] = useState(isEditing ? (appointment.skinReaction || null) : null);
   const [loading, setLoading] = useState(false);
   const [priceList, setPriceList] = useState({});

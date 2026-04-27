@@ -79,7 +79,10 @@ export default function CustomerProfileScreen({ route, navigation }) {
   };
 
   const handleAddAppointment = () => {
-    navigation.navigate("AddAppointment", { customer: customerData });
+    const lastAppointment = appointments.length > 0
+      ? appointments.reduce((latest, a) => new Date(a.date) > new Date(latest.date) ? a : latest)
+      : null;
+    navigation.navigate("AddAppointment", { customer: customerData, lastAppointment });
   };
 
   const handleEditAppointment = (appointment) => {
