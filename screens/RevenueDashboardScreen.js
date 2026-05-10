@@ -186,7 +186,7 @@ export default function RevenueDashboardScreen({ navigation }) {
           {/* Total Revenue Card */}
           <LinearGradient colors={theme.gradientPrimary} style={styles.totalCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Text style={[styles.totalLabel, { color: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.8)' }]}>
-              {t('totalRevenue')} · {selectedZone || t('allZones')}
+              {t('totalRevenue')} · {selectedZone ? t(selectedZone) : t('allZones')}
             </Text>
             <Text style={[styles.totalAmount, { color: isDark ? '#111' : '#fff' }]}>
               {formatMoney(data?.totalRevenue)}
@@ -224,7 +224,7 @@ export default function RevenueDashboardScreen({ navigation }) {
                     style={[styles.chip, { borderColor: theme.primary, backgroundColor: selectedZone === z.zone ? theme.primary + '20' : 'transparent' }]}
                     onPress={() => setSelectedZone(z.zone)}
                   >
-                    <Text style={[styles.chipText, { color: theme.primary }]}>{z.zone}</Text>
+                    <Text style={[styles.chipText, { color: theme.primary }]}>{t(z.zone)}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -242,7 +242,7 @@ export default function RevenueDashboardScreen({ navigation }) {
                 return (
                   <View key={z.zone} style={[styles.zoneRow, i < data.byZone.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
                     <View style={styles.zoneRowLeft}>
-                      <Text style={[styles.zoneName, { color: theme.textPrimary }]}>{z.zone}</Text>
+                      <Text style={[styles.zoneName, { color: theme.textPrimary }]}>{t(z.zone)}</Text>
                       <Text style={[styles.zoneSessions, { color: theme.textTertiary }]}>
                         {z.sessions} {t('sessions').toLowerCase()}
                       </Text>

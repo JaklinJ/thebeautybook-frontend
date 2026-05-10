@@ -122,6 +122,7 @@ export default function CalendarScreen({ navigation }) {
   const [scheduleTime, setScheduleTime]         = useState(defaultTime);
   const [expandedHour, setExpandedHour]         = useState(null);
   const [saving, setSaving]                     = useState(false);
+  const [editingEntryId, setEditingEntryId]     = useState(null);
 
   // ── Data ─────────────────────────────────────────────────────────────────
   const fetchMonth = useCallback(async () => {
@@ -200,7 +201,10 @@ export default function CalendarScreen({ navigation }) {
     openPicker(preTime);
   };
 
-  // ── Save schedule entry ───────────────────────────────────────────────────
+  // ── Close schedule modal ─────────────────────────────────────────────────
+  const closeScheduleModal = () => { setShowSchedule(false); setEditingEntryId(null); };
+
+  // ── Save / update schedule entry ──────────────────────────────────────────
   const handleSaveSchedule = async () => {
     setSaving(true);
     try {
@@ -208,20 +212,55 @@ export default function CalendarScreen({ navigation }) {
       const entryDate = new Date(yr, mo - 1, dy, scheduleTime.getHours(), scheduleTime.getMinutes(), 0);
       const totalDur  = selectedZones.reduce((s, k) => s + getDur(k), 0);
       const price = selectedZones.reduce((s, k) => s + (priceList[k] || 0), 0);
-      await api.post('/schedule', {
+      const payload = {
         customerId: scheduleCustomer._id,
         date:       entryDate.toISOString(),
         zones:      selectedZones,
         duration:   totalDur || null,
         totalPrice: price > 0 ? price : null,
-      });
-      setShowSchedule(false);
+      };
+      if (editingEntryId) {
+        await api.put(`/schedule/${editingEntryId}`, payload);
+      } else {
+        await api.post('/schedule', payload);
+      }
+      closeScheduleModal();
       await fetchMonth();
     } catch (e) {
       Alert.alert(t('error'), e.response?.data?.message || t('failedToAddAppointment'));
     } finally {
       setSaving(false);
     }
+  };
+
+  // ── Open edit mode ────────────────────────────────────────────────────────
+  const handleOpenEdit = async () => {
+    const entry = selectedEntry;
+    setSelectedEntry(null);
+    setScheduleCustomer(entry.customerId);
+    setSelectedZones(entry.zones || []);
+    const entryTime = new Date(entry.date);
+    setScheduleTime(entryTime);
+    setExpandedHour(entryTime.getHours());
+    setEditingEntryId(entry._id);
+    if (!customers.length) {
+      setLoadingCustomers(true);
+      try {
+        const [cusRes, plRes, zdRes] = await Promise.all([
+          api.get('/customers'),
+          api.get('/pricelists'),
+          api.get('/zonedurations'),
+        ]);
+        setCustomers(cusRes.data);
+        setPriceList(plRes.data.prices || {});
+        setZoneDurations(zdRes.data.durations || {});
+      } catch (e) {
+        console.error('Load edit data error:', e);
+      } finally {
+        setLoadingCustomers(false);
+      }
+    }
+    setShowSchedule(true);
   };
 
   // ── Delete schedule entry ─────────────────────────────────────────────────
@@ -533,6 +572,12 @@ export default function CalendarScreen({ navigation }) {
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
+                  style={[styles.deleteBtn, { borderColor: theme.primary }]}
+                  onPress={handleOpenEdit}
+                  activeOpacity={0.75}>
+                  <Ionicons name="pencil-outline" size={20} color={theme.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={[styles.deleteBtn, { borderColor: '#EF4444' }]}
                   onPress={() => {
                     Alert.alert(
@@ -610,8 +655,8 @@ export default function CalendarScreen({ navigation }) {
       </Modal>
 
       {/* ── Schedule modal ───────────────────────────────────────────────── */}
-      <Modal visible={showSchedule} animationType="slide" transparent onRequestClose={() => setShowSchedule(false)}>
-        <TouchableOpacity activeOpacity={1} onPress={() => setShowSchedule(false)}
+      <Modal visible={showSchedule} animationType="slide" transparent onRequestClose={closeScheduleModal}>
+        <TouchableOpacity activeOpacity={1} onPress={closeScheduleModal}
           style={[StyleSheet.absoluteFill, { backgroundColor: theme.overlay }]} />
         <View style={[styles.scheduleSheet, {
           backgroundColor: isDark ? 'rgba(21,27,43,0.99)' : theme.surface,
@@ -620,10 +665,12 @@ export default function CalendarScreen({ navigation }) {
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
           <View style={styles.sheetHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{t('scheduleFor')}</Text>
+              <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>
+                {editingEntryId ? (t('editEntry') || 'Edit Entry') : t('scheduleFor')}
+              </Text>
               <Text style={[styles.scheduleCustomerName, { color: theme.primary }]}>{scheduleCustomer?.name}</Text>
             </View>
-            <TouchableOpacity onPress={() => setShowSchedule(false)}>
+            <TouchableOpacity onPress={closeScheduleModal}>
               <Ionicons name="close" size={26} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -674,7 +721,7 @@ export default function CalendarScreen({ navigation }) {
               const availableSlots = hourSlots.filter(({ h, m }) => {
                 const slotStart = h * 60 + m;
                 const slotEnd   = slotStart + (totalDuration || 5);
-                return !selectedEntries.some(entry => {
+                return !selectedEntries.filter(e => e._id !== editingEntryId).some(entry => {
                   const ad = new Date(entry.date);
                   const entryStart = ad.getHours() * 60 + ad.getMinutes();
                   return slotStart < entryStart + (entry.duration || 60) && slotEnd > entryStart;

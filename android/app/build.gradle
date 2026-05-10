@@ -89,7 +89,7 @@ android {
 
     namespace 'com.anonymous.beautysalonapp'
     defaultConfig {
-        applicationId 'com.anonymous.beautysalonapp'
+        applicationId 'com.zhaklinco.laseria'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
