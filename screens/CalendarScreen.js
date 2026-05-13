@@ -666,7 +666,7 @@ export default function CalendarScreen({ navigation }) {
           <View style={styles.sheetHeader}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>
-                {editingEntryId ? (t('editEntry') || 'Edit Entry') : t('scheduleFor')}
+                {editingEntryId ? t('editEntry') : t('scheduleFor')}
               </Text>
               <Text style={[styles.scheduleCustomerName, { color: theme.primary }]}>{scheduleCustomer?.name}</Text>
             </View>

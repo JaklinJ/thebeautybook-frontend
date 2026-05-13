@@ -5,11 +5,18 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  useFonts,
+  CormorantGaramond_400Regular,
+  CormorantGaramond_600SemiBold,
+  CormorantGaramond_700Bold,
+} from '@expo-google-fonts/cormorant-garamond';
 import { AuthContext } from './context/AuthContext';
 import { LanguageProvider, LanguageContext } from './context/LanguageContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { CurrencyProvider } from './context/CurrencyContext';
+import { Asset } from 'expo-asset';
 import AnimatedSplashScreen from './components/AnimatedSplashScreen';
 
 import LoginScreen from './screens/LoginScreen';
@@ -53,6 +60,9 @@ function MainTabs() {
           if (route.name === 'CalendarTab') {
             return <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />;
           }
+          if (route.name === 'RevenueTab') {
+            return <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={24} color={color} />;
+          }
         },
       })}
     >
@@ -65,6 +75,11 @@ function MainTabs() {
         name="CalendarTab"
         component={CalendarScreen}
         options={{ tabBarLabel: t('calendar') }}
+      />
+      <Tab.Screen
+        name="RevenueTab"
+        component={RevenueDashboardScreen}
+        options={{ tabBarLabel: t('revenue') }}
       />
     </Tab.Navigator>
   );
@@ -87,6 +102,12 @@ function AppNavigator() {
         AsyncStorage.getItem('token'),
         AsyncStorage.getItem('salon'),
         new Promise(resolve => setTimeout(resolve, 2000)),
+        Asset.loadAsync([
+          require('./assets/body-front.png'),
+          require('./assets/body-back.png'),
+          require('./assets/body-front-man.png'),
+          require('./assets/body-back-man.png'),
+        ]),
       ]);
 
       if (token && salonData) {
@@ -166,7 +187,6 @@ function AppNavigator() {
                 /> */}
                 <Stack.Screen name="PriceList" component={PriceListScreen} />
                 <Stack.Screen name="ZoneDuration" component={ZoneDurationScreen} />
-                <Stack.Screen name="RevenueDashboard" component={RevenueDashboardScreen} />
               </>
             )}
           </Stack.Navigator>
@@ -178,6 +198,14 @@ function AppNavigator() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    CormorantGaramond_400Regular,
+    CormorantGaramond_600SemiBold,
+    CormorantGaramond_700Bold,
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
     <ThemeProvider>
       <LanguageProvider>

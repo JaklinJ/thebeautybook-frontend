@@ -85,6 +85,7 @@ export const translations = {
     deleteAppointmentConfirm: "Are you sure you want to delete this appointment?",
     deleteAppointmentFailed: "Failed to delete appointment",
     editAppointment: "Edit Appointment",
+    editEntry: "Edit Entry",
     updateAppointment: "Update Appointment",
     appointmentUpdated: "Appointment updated successfully",
     
@@ -142,6 +143,11 @@ export const translations = {
     rowMin: "Min",
     progress: "Progress",
     totalClients: "Total Clients",
+    total: "Total",
+    day: "Day",
+    week: "Week",
+    month: "Month",
+    year: "Year",
     haveAccount: "Already have an account?",
     login: "Login",
     
@@ -179,7 +185,32 @@ export const translations = {
     zoneHalfLegs: "Half Legs",
     zoneGlutes: "Glutes",
     zoneOther: "Other",
-    
+
+    // Men zones
+    zoneFaceMan: "Face (Men)",
+    zoneUpperLipMan: "Upper Lip (Men)",
+    zoneChinMan: "Chin (Men)",
+    zoneNeckMan: "Neck (Men)",
+    zoneThroatMan: "Throat (Men)",
+    zoneChestMan: "Chest (Men)",
+    zoneBackMan: "Back (Men)",
+    zoneArmsMan: "Arms (Men)",
+    zoneHalfArmsMan: "Half Arms (Men)",
+    zoneArmpitsMan: "Armpits (Men)",
+    zoneAbdomenMan: "Abdomen (Men)",
+    zoneIntimateMan: "Intimate (Men)",
+    zoneBikiniLineMan: "Bikini Line (Men)",
+    zoneLowerBackMan: "Lower Back (Men)",
+    zoneLegsMan: "Legs (Men)",
+    zoneHalfLegsMan: "Half Legs (Men)",
+    zoneGlutesMan: "Glutes (Men)",
+    zoneOtherMan: "Other (Men)",
+
+    // Gender
+    genderLabel: "Gender",
+    genderWoman: "Woman",
+    genderMan: "Man",
+
     // Placeholders
     customZonePlaceholder: "Or add another zone",
     powerPlaceholder: "e.g. 15.5",
@@ -358,6 +389,7 @@ export const translations = {
     deleteAppointmentConfirm: "Сигурни ли сте, че искате да изтриете това посещение?",
     deleteAppointmentFailed: "Неуспешно изтриване на посещение",
     editAppointment: "Редактирай посещение",
+    editEntry: "Редактирай запис",
     updateAppointment: "Запази промените",
     appointmentUpdated: "Посещението е обновено успешно",
     
@@ -415,7 +447,12 @@ export const translations = {
     rowMin: "Мин.",
     progress: "Прогрес",
     totalClients: "Общ брой клиенти",
-    
+    total: "Общо",
+    day: "Ден",
+    week: "Седмица",
+    month: "Месец",
+    year: "Година",
+
     // Body Map
     bodyMap: "Карта на тялото",
     bodyMapDesc: "Визуализирайте зоните на третиране, проследявайте прогреса и историята на сесиите",
@@ -450,7 +487,32 @@ export const translations = {
     zoneHalfLegs: "Половин Крака",
     zoneGlutes: "Дупе",
     zoneOther: "Други",
-    
+
+    // Мъжки зони
+    zoneFaceMan: "Лице - мъже",
+    zoneUpperLipMan: "Горна Устна - мъже",
+    zoneChinMan: "Брада - мъже",
+    zoneNeckMan: "Врат - мъже",
+    zoneThroatMan: "Шия - мъже",
+    zoneChestMan: "Гърди - мъже",
+    zoneBackMan: "Гръб - мъже",
+    zoneArmsMan: "Ръце - мъже",
+    zoneHalfArmsMan: "Половин Ръце - мъже",
+    zoneArmpitsMan: "Подмишници - мъже",
+    zoneAbdomenMan: "Корем - мъже",
+    zoneIntimateMan: "Интим - мъже",
+    zoneBikiniLineMan: "Бикини Линия - мъже",
+    zoneLowerBackMan: "Кръст - мъже",
+    zoneLegsMan: "Крака - мъже",
+    zoneHalfLegsMan: "Половин Крака - мъже",
+    zoneGlutesMan: "Дупе - мъже",
+    zoneOtherMan: "Други - мъже",
+
+    // Пол
+    genderLabel: "Пол",
+    genderWoman: "Жена",
+    genderMan: "Мъж",
+
     // Placeholders
     customZonePlaceholder: "Или добави друга зона",
     powerPlaceholder: "пр. 15.5",

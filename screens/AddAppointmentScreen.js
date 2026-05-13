@@ -72,6 +72,11 @@ export default function AddAppointmentScreen({ route, navigation }) {
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInputText, setDateInputText] = useState("");
+  const [appointmentGender, setAppointmentGender] = useState(
+    isEditing ? (appointment.treatments[0]?.gender || 'woman') :
+    lastAppointment ? (lastAppointment.treatments[0]?.gender || 'woman') :
+    customer?.gender || 'woman'
+  );
   const [treatments, setTreatments] = useState(
     isEditing
       ? appointment.treatments.map(t => ({
@@ -157,15 +162,31 @@ export default function AddAppointmentScreen({ route, navigation }) {
     }
   };
 
+  const resolvePrice = (zoneKey, gender) => {
+    const priceKey = gender === 'man' ? zoneKey + 'Man' : zoneKey;
+    const val = priceList[priceKey];
+    if (val !== undefined && val !== '' && Number(val) > 0) return String(val);
+    return null;
+  };
+
+  const handleGenderChange = (g) => {
+    setAppointmentGender(g);
+    setTreatments(prev => prev.map(tr => {
+      const zoneKey = ZONE_KEY_SET.has(tr.zone) ? tr.zone : ZONE_KEYS.find(k => t(k) === tr.zone);
+      if (!zoneKey) return tr;
+      const resolved = resolvePrice(zoneKey, g);
+      return { ...tr, price: resolved !== null ? resolved : '' };
+    }));
+  };
+
   const updateTreatment = (index, field, value) => {
     const newTreatments = [...treatments];
     newTreatments[index][field] = value;
-    // Auto-fill price when zone is selected
     if (field === 'zone') {
-      // value is a key when a chip is tapped, or raw text when typed manually
       const zoneKey = ZONE_KEY_SET.has(value) ? value : ZONE_KEYS.find(k => t(k) === value);
-      if (zoneKey && priceList[zoneKey] !== undefined) {
-        newTreatments[index].price = String(priceList[zoneKey]);
+      if (zoneKey) {
+        const resolved = resolvePrice(zoneKey, appointmentGender);
+        newTreatments[index].price = resolved !== null ? resolved : '';
       }
     }
     setTreatments(newTreatments);
@@ -206,6 +227,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
         pulseWidth: t.pulseWidth ? parseNum(t.pulseWidth) : null,
         frequency: t.frequency ? parseNum(t.frequency) : null,
         price: parseNum(t.price) || 0,
+        gender: appointmentGender,
       }));
 
       if (isEditing) {
@@ -257,12 +279,12 @@ export default function AddAppointmentScreen({ route, navigation }) {
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={theme.headerBackground}
       />
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? '#2E2924' : theme.background }]}>
         <View
           style={[
             styles.header,
             {
-              backgroundColor: theme.surface,
+              backgroundColor: isDark ? '#3A3430' : theme.surface,
               shadowColor: theme.shadow,
             },
           ]}
@@ -286,13 +308,39 @@ export default function AddAppointmentScreen({ route, navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.customerInfo, { backgroundColor: theme.card }]}>
+          <View style={[styles.customerInfo, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <Text style={[styles.customerName, { color: theme.textPrimary }]}>
               {customer.name}
             </Text>
           </View>
 
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          {/* Gender toggle — top level, applies to all zones */}
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
+            <Text style={[styles.label, { color: theme.textPrimary }]}>{t('genderLabel')}</Text>
+            <View style={styles.genderToggle}>
+              {['woman', 'man'].map((g) => {
+                const active = appointmentGender === g;
+                const color = g === 'woman' ? theme.pink : theme.blue;
+                return (
+                  <TouchableOpacity
+                    key={g}
+                    style={[styles.genderBtn, {
+                      backgroundColor: active ? color + '22' : 'transparent',
+                      borderColor: active ? color : theme.border,
+                    }]}
+                    onPress={() => handleGenderChange(g)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.genderBtnText, { color: active ? color : theme.textSecondary }]}>
+                      {g === 'woman' ? `♀ ${t('genderWoman')}` : `♂ ${t('genderMan')}`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>
               {t("date")}
             </Text>
@@ -423,7 +471,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
           </View>
 
           {/* Skin Type */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>
               {t("skinTypeOptional")}
             </Text>
@@ -457,7 +505,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
           </View>
 
           {/* Laser Type */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>
               {t("laserTypeOptional")}
             </Text>
@@ -492,7 +540,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
           </View>
 
           {/* Cooling */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>
               {t("coolingOptional")}
             </Text>
@@ -526,7 +574,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
             </View>
           </View>
 
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.label, { color: theme.textPrimary }]}>
                 {t("treatmentZones")}
@@ -534,12 +582,14 @@ export default function AddAppointmentScreen({ route, navigation }) {
             </View>
 
             {treatments.map((treatment, index) => (
+              <React.Fragment key={index}>
+                {index > 0 && <View style={styles.treatmentCardGap} />}
               <View
-                key={index}
                 style={[
                   styles.treatmentRow,
                   {
-                    backgroundColor: theme.surfaceSecondary,
+                    backgroundColor: isDark ? '#473F39' : theme.surface,
+                    borderColor: theme.border,
                   },
                 ]}
               >
@@ -563,7 +613,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
                               backgroundColor:
                                 treatment.zone === key
                                   ? theme.primary + "20"
-                                  : theme.surfaceSecondary,
+                                  : isDark ? '#3F3830' : theme.background,
                               borderColor:
                                 treatment.zone === key
                                   ? theme.primary
@@ -650,8 +700,8 @@ export default function AddAppointmentScreen({ route, navigation }) {
 
                 {/* Price row — full width, below zones and power */}
                 <View style={styles.priceRow}>
-                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
-                    {t("price")}
+                  <Text style={[styles.inputLabel, { color: appointmentGender === 'man' ? theme.blue : theme.pink }]}>
+                    {appointmentGender === 'man' ? `♂ ${t("price")}` : `♀ ${t("price")}`}
                   </Text>
                   <TextInput
                     style={[
@@ -683,6 +733,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
                   </TouchableOpacity>
                 )}
               </View>
+              </React.Fragment>
             ))}
             <TouchableOpacity
               onPress={addTreatment}
@@ -707,7 +758,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
           </View>
 
           {/* Skin Reaction */}
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>
               {t("skinReactionOptional")}
             </Text>
@@ -741,7 +792,7 @@ export default function AddAppointmentScreen({ route, navigation }) {
             </View>
           </View>
 
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? '#3A3430' : theme.card }]}>
             <Text style={[styles.label, { color: theme.textPrimary }]}>
               {t("notesOptional")}
             </Text>
@@ -898,9 +949,17 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   treatmentRow: {
-    marginBottom: 15,
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  treatmentCardGap: {
+    height: 14,
   },
   zoneContainer: {
     marginBottom: 12,
@@ -1087,5 +1146,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
+  },
+  genderToggle: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  genderBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  genderBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

@@ -1,12 +1,12 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
 export default function LanguageSelector() {
   const { language, changeLanguage, t } = useContext(LanguageContext);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [showModal, setShowModal] = useState(false);
 
   const languages = [
@@ -24,19 +24,22 @@ export default function LanguageSelector() {
   return (
     <>
       <TouchableOpacity
-        style={[styles.selectorButton, { borderColor: theme.border }]}
+        style={[styles.selectorButton, {
+          borderColor: theme.primary + '60',
+          backgroundColor: theme.primary + '10',
+        }]}
         onPress={() => setShowModal(true)}
-        activeOpacity={0.6}
+        activeOpacity={0.65}
       >
-        <View style={styles.flagBadge}>
-          <Text style={styles.flagText}>{currentLanguage?.flagCode || '?'}</Text>
-        </View>
-        <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
+        <Text style={[styles.flagText, { color: theme.primary }]}>
+          {currentLanguage?.flagCode || '?'}
+        </Text>
+        <Ionicons name="chevron-down" size={10} color={theme.primary} style={{ marginLeft: 2 }} />
       </TouchableOpacity>
 
       <Modal
         visible={showModal}
-        transparent={true}
+        transparent
         animationType="fade"
         onRequestClose={() => setShowModal(false)}
       >
@@ -45,38 +48,36 @@ export default function LanguageSelector() {
           activeOpacity={1}
           onPress={() => setShowModal(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-            <View style={styles.modalHandle} />
+          <View style={[styles.modalContent, {
+            backgroundColor: isDark ? '#1A1815' : theme.surface,
+            borderColor: isDark ? '#2E2A26' : theme.border,
+          }]}>
+            <View style={[styles.modalHandle, { backgroundColor: theme.border }]} />
             <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
               {t('selectLanguage')}
             </Text>
             {languages.map((lang) => (
               <TouchableOpacity
                 key={lang.code}
-                style={[
-                  styles.languageOption,
-                  { 
-                    backgroundColor: language === lang.code ? theme.primary + '15' : theme.surfaceSecondary,
-                    borderColor: language === lang.code ? theme.primary : theme.border,
-                  },
-                ]}
+                style={[styles.languageOption, {
+                  backgroundColor: language === lang.code ? theme.primary + '12' : 'transparent',
+                  borderColor: language === lang.code ? theme.primary + '50' : theme.border,
+                }]}
                 onPress={() => handleLanguageSelect(lang.code)}
                 activeOpacity={0.7}
               >
-                <View style={styles.flagBadge}>
-                  <Text style={styles.flagText}>{lang.flagCode}</Text>
+                <View style={[styles.flagBadge, { backgroundColor: theme.primary + '18', borderColor: theme.primary + '40' }]}>
+                  <Text style={[styles.modalFlagText, { color: theme.primary }]}>{lang.flagCode}</Text>
                 </View>
-                <Text
-                  style={[
-                    styles.languageOptionText,
-                    { color: theme.textPrimary },
-                    language === lang.code && styles.languageOptionTextActive,
-                  ]}
-                >
+                <Text style={[
+                  styles.languageOptionText,
+                  { color: language === lang.code ? theme.primary : theme.textSecondary },
+                  language === lang.code && { fontWeight: '700' },
+                ]}>
                   {lang.name}
                 </Text>
                 {language === lang.code && (
-                  <Ionicons name="checkmark-circle" size={22} color={theme.primary} />
+                  <Ionicons name="checkmark" size={16} color={theme.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -92,27 +93,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
     borderWidth: 1,
-    minWidth: 52,
-    height: 40,
-    backgroundColor: 'transparent',
-  },
-  flagBadge: {
-    width: 28,
-    height: 20,
-    borderRadius: 3,
-    backgroundColor: '#4A90D9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
+    height: 30,
   },
   flagText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   modalOverlay: {
@@ -120,41 +109,53 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 36,
   },
   modalHandle: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: '#D1D5DB',
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+    marginTop: 4,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 20,
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 14,
+    letterSpacing: 0.3,
   },
   languageOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 10,
-    borderWidth: 2,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    gap: 10,
+  },
+  flagBadge: {
+    width: 30,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalFlagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   languageOptionText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
-    marginLeft: 12,
-  },
-  languageOptionTextActive: {
-    fontWeight: '700',
   },
 });
-

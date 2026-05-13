@@ -39,6 +39,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editGender, setEditGender] = useState('woman');
   const [saving, setSaving] = useState(false);
 
   const { t } = React.useContext(LanguageContext);
@@ -94,6 +95,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
     setEditPhone(customerData.phone || '');
     setEditEmail(customerData.email || '');
     setEditNotes(customerData.notes || '');
+    setEditGender(customerData.gender || 'woman');
     setShowEditModal(true);
   };
 
@@ -109,6 +111,7 @@ export default function CustomerProfileScreen({ route, navigation }) {
         phone: editPhone.trim(),
         email: editEmail.trim(),
         notes: editNotes.trim(),
+        gender: editGender,
       });
       setCustomerData(response.data);
       setShowEditModal(false);
@@ -721,6 +724,28 @@ export default function CustomerProfileScreen({ route, navigation }) {
                       multiline
                     />
                   </View>
+
+                  <View style={styles.editGenderToggle}>
+                    {['woman', 'man'].map((g) => {
+                      const active = editGender === g;
+                      const color = g === 'woman' ? theme.pink : theme.blue;
+                      return (
+                        <TouchableOpacity
+                          key={g}
+                          style={[styles.editGenderBtn, {
+                            backgroundColor: active ? color + '22' : isDark ? 'rgba(255,255,255,0.06)' : theme.inputBackground,
+                            borderColor: active ? color : theme.border,
+                          }]}
+                          onPress={() => setEditGender(g)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.editGenderBtnText, { color: active ? color : theme.textSecondary }]}>
+                            {g === 'woman' ? `♀ ${t('genderWoman')}` : `♂ ${t('genderMan')}`}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
 
                 {/* Buttons */}
@@ -838,9 +863,10 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   customerName: {
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontFamily: 'CormorantGaramond_700Bold',
+    fontSize: 28,
+    letterSpacing: 0.3,
+    lineHeight: 34,
   },
   phoneRow: {
     flexDirection: 'row',
@@ -1295,6 +1321,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '500',
+  },
+  editGenderToggle: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  editGenderBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editGenderBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   editSaveBtn: {
     flex: 1,

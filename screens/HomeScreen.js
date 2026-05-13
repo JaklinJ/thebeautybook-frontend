@@ -16,13 +16,36 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import Svg, { Path } from "react-native-svg";
 import { AuthContext } from "../context/AuthContext";
 import { LanguageContext } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
+import { useCurrency } from "../context/CurrencyContext";
 import api from "../config/api";
 import LanguageSelector from "../components/LanguageSelector";
 import ThemeToggle from "../components/ThemeToggle";
 import { useSubscription, FREE_TIER_CLIENT_LIMIT } from "../context/SubscriptionContext";
+
+function LaseriaLogo({ textColor }) {
+  return (
+    <View>
+      <View style={{ position: 'relative' }}>
+        <Text style={{ fontFamily: 'CormorantGaramond_400Regular', fontSize: 22, letterSpacing: 5, color: textColor }}>
+          LASERIA
+        </Text>
+        {/* Star ornament above the A (last letter) */}
+        <View style={{ position: 'absolute', right: -2, top: -8 }}>
+          <Svg width="7" height="7" viewBox="0 0 10 10">
+            <Path d="M5,0 L5.7,4.3 L10,5 L5.7,5.7 L5,10 L4.3,5.7 L0,5 L4.3,4.3 Z" fill="#C8922A" />
+          </Svg>
+        </View>
+      </View>
+      <Text style={{ fontSize: 8, letterSpacing: 3, color: '#C8922A', textTransform: 'uppercase', marginTop: 1 }}>
+        digital client book
+      </Text>
+    </View>
+  );
+}
 
 export default function HomeScreen({ navigation }) {
   const [customers, setCustomers] = useState([]);
@@ -40,6 +63,7 @@ export default function HomeScreen({ navigation }) {
     phone: "",
     email: "",
     notes: "",
+    gender: "woman",
   });
   const [editProfile, setEditProfile] = useState({
     name: "",
@@ -61,14 +85,20 @@ export default function HomeScreen({ navigation }) {
   const [addingCustomer, setAddingCustomer] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [todayCount, setTodayCount] = useState(0);
+  const [monthRevenue, setMonthRevenue] = useState(0);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   const { signOut, salon, updateSalon } = useContext(AuthContext);
-  const { t } = useContext(LanguageContext);
+  const { t, language } = useContext(LanguageContext);
   const { theme, isDark } = useTheme();
+  const { formatPrice } = useCurrency();
   const { isPro } = useSubscription();
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       loadCustomers();
+      loadStats();
     });
     return unsubscribe;
   }, [navigation]);
@@ -132,6 +162,25 @@ export default function HomeScreen({ navigation }) {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    setStatsLoading(true);
+    try {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+      const [scheduleRes, revenueRes] = await Promise.all([
+        api.get('/schedule/range', { params: { from: todayStart, to: todayEnd } }),
+        api.get('/revenue', { params: { year: now.getFullYear(), month: now.getMonth() + 1 } }),
+      ]);
+      setTodayCount(scheduleRes.data.length);
+      setMonthRevenue(revenueRes.data.totalRevenue || 0);
+    } catch (e) {
+      console.error('Stats load error:', e);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -212,7 +261,7 @@ export default function HomeScreen({ navigation }) {
     try {
       await api.post("/customers", newCustomer);
       setShowAddModal(false);
-      setNewCustomer({ name: "", phone: "", email: "", notes: "" });
+      setNewCustomer({ name: "", phone: "", email: "", notes: "", gender: "woman" });
       await loadCustomers();
       Alert.alert(t("success"), t("customerAdded"));
     } catch (error) {
@@ -228,7 +277,7 @@ export default function HomeScreen({ navigation }) {
 
   const handleCancelAdd = () => {
     setShowAddModal(false);
-    setNewCustomer({ name: "", phone: "", email: "", notes: "" });
+    setNewCustomer({ name: "", phone: "", email: "", notes: "", gender: "woman" });
   };
 
   const renderCustomer = ({ item, index }) => (
@@ -266,34 +315,47 @@ export default function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
+  const now = new Date();
+  const currentMonthLabel = now.toLocaleString(
+    language === 'bg' ? 'bg-BG' : 'en-US', { month: 'long' }
+  );
+
   const renderHeader = () => (
-    <View style={styles.statsContainer}>
-      <View style={[styles.statCard, { backgroundColor: theme.glassCard, borderColor: theme.glassCardBorder, shadowColor: isDark ? '#7C3AED' : '#F59E0B' }]}>
-        <View style={[styles.statIcon, { backgroundColor: theme.primary + '20' }]}>
-          <Ionicons name="people" size={24} color={theme.primary} />
+    <View style={styles.statsGrid}>
+      <View style={styles.statsRow}>
+        {/* Card 1 — Clients */}
+        <View style={[styles.statCard2, { backgroundColor: theme.glassCard, borderColor: theme.glassCardBorder }]}>
+          <Ionicons name="people-outline" size={18} color={theme.primary} style={styles.statCard2Icon} />
+          <Text style={[styles.statCard2Label, { color: theme.textTertiary }]}>{t('clients')}</Text>
+          <Text style={[styles.statCard2Value, { color: theme.primary }]}>{customers.length}</Text>
+          <Text style={[styles.statCard2Sub, { color: theme.textTertiary }]}>{t('total')}</Text>
         </View>
-        <View style={styles.statInfo}>
-          <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-            Total Clients
-          </Text>
-          <Text style={[styles.statValue, { color: theme.textPrimary }]}>
-            {customers.length}
-            {!isPro && (
-              <Text style={[styles.statLimit, { color: theme.textTertiary }]}>
-                {' '}/ {FREE_TIER_CLIENT_LIMIT}
+        {/* Card 2 — Today */}
+        <View style={[styles.statCard2, { backgroundColor: theme.glassCard, borderColor: theme.glassCardBorder }]}>
+          <Ionicons name="calendar-outline" size={18} color={theme.primary} style={styles.statCard2Icon} />
+          <Text style={[styles.statCard2Label, { color: theme.textTertiary }]}>{t('today')}</Text>
+          {statsLoading
+            ? <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 10 }} />
+            : <Text style={[styles.statCard2Value, { color: theme.primary }]}>{todayCount}</Text>
+          }
+          <Text style={[styles.statCard2Sub, { color: theme.textTertiary }]}>{t('appointments')}</Text>
+        </View>
+      </View>
+      {/* Card 3 — Revenue (full width) */}
+      <View style={[styles.statCard2Wide, { backgroundColor: theme.glassCard, borderColor: theme.glassCardBorder }]}>
+        <View style={styles.statCard2WideInner}>
+          <View>
+            <Ionicons name="wallet-outline" size={18} color={theme.primary} style={styles.statCard2Icon} />
+            <Text style={[styles.statCard2Label, { color: theme.textTertiary }]}>{t('revenue')}</Text>
+            <Text style={[styles.statCard2Sub, { color: theme.textTertiary }]}>{currentMonthLabel}</Text>
+          </View>
+          {statsLoading
+            ? <ActivityIndicator size="small" color={theme.primary} />
+            : <Text style={[styles.statCard2Value, { color: theme.primary }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {formatPrice(monthRevenue)}
               </Text>
-            )}
-          </Text>
+          }
         </View>
-        {/* !isPro && (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Paywall')}
-            style={[styles.upgradeChip, { backgroundColor: theme.primary + '18', borderColor: theme.primary + '35' }]}
-          >
-            <Ionicons name="star-outline" size={13} color={theme.primary} />
-            <Text style={[styles.upgradeChipText, { color: theme.primary }]}>Pro</Text>
-          </TouchableOpacity>
-        ) */}
       </View>
     </View>
   );
@@ -316,18 +378,16 @@ export default function HomeScreen({ navigation }) {
       <View style={[styles.orb, styles.orbMidLeft,   { backgroundColor: theme.orbPrimary }]} />
       <View style={[styles.orb, styles.orbBottomRight,{ backgroundColor: theme.orbSecondary }]} />
 
-      {/* Sleek Modern Header */}
+      {/* Header */}
       <LinearGradient
         colors={theme.gradientHeader}
-        style={[styles.header, { borderBottomColor: theme.headerBorder, shadowColor: isDark ? '#7C3AED' : '#F59E0B' }]}
+        style={[styles.header, { borderBottomColor: theme.headerBorder, shadowColor: '#C8922A' }]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        {/* Row 1: controls */}
+        {/* Row 1: logo + controls */}
         <View style={styles.headerControlsRow}>
-          <Text style={[styles.greeting, { color: theme.textTertiary }]}>
-            {t("welcomeBack")}
-          </Text>
+          <LaseriaLogo textColor={theme.textPrimary} />
           <View style={styles.headerActions}>
             <LanguageSelector />
             <View style={styles.actionsSpacer} />
@@ -335,31 +395,21 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.actionsSpacer} />
             <TouchableOpacity
               onPress={() => setShowProfileMenu(true)}
-              style={[styles.actionButton, {
-                backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
-                borderColor: theme.headerBorder,
-              }]}
-              activeOpacity={0.6}
+              style={[styles.avatarBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '12' }]}
+              activeOpacity={0.7}
             >
-              <Ionicons name="person-outline" size={20} color={theme.textSecondary} />
+              <Ionicons name="person" size={17} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Row 2: salon identity */}
+        {/* Row 2: greeting + salon name */}
         <View style={styles.headerIdentityRow}>
-          <LinearGradient
-            colors={theme.gradientPrimary}
-            style={styles.headerAvatar}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.headerAvatarText}>
-              {salon?.name?.[0]?.toUpperCase() || 'S'}
-            </Text>
-          </LinearGradient>
+          <Text style={[styles.greeting, { color: theme.textTertiary }]}>
+            {t("welcomeBack")}
+          </Text>
           <Text style={[styles.salonName, { color: theme.textPrimary }]}>
-            {salon?.name || "Salon"}
+            {salon?.name || "Studio"}
           </Text>
         </View>
 
@@ -421,18 +471,6 @@ export default function HomeScreen({ navigation }) {
             <Ionicons name="time-outline" size={20} color={theme.textPrimary} />
             <Text style={[styles.dropdownText, { color: theme.textPrimary }]}>
               {t('zoneDuration')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
-            onPress={() => {
-              setShowProfileMenu(false);
-              navigation.navigate('RevenueDashboard');
-            }}
-          >
-            <Ionicons name="bar-chart-outline" size={20} color={theme.textPrimary} />
-            <Text style={[styles.dropdownText, { color: theme.textPrimary }]}>
-              {t('revenue')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1019,6 +1057,33 @@ export default function HomeScreen({ navigation }) {
 
                 <View style={styles.inputGroup}>
                   <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                    {t("genderLabel")}
+                  </Text>
+                  <View style={styles.genderToggle}>
+                    {['woman', 'man'].map((g) => {
+                      const active = newCustomer.gender === g;
+                      const color = g === 'woman' ? theme.pink : theme.blue;
+                      return (
+                        <TouchableOpacity
+                          key={g}
+                          style={[styles.genderBtn, {
+                            backgroundColor: active ? color + '22' : theme.inputBackground,
+                            borderColor: active ? color : theme.border,
+                          }]}
+                          onPress={() => setNewCustomer({ ...newCustomer, gender: g })}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.genderBtnText, { color: active ? color : theme.textSecondary }]}>
+                            {g === 'woman' ? `♀ ${t('genderWoman')}` : `♂ ${t('genderMan')}`}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
                     {t("customerPhone")}
                   </Text>
                   <TextInput
@@ -1156,30 +1221,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 20,
   },
   headerIdentityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     marginBottom: 16,
-  },
-  headerAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  headerAvatarText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
   },
   headerActions: {
     flexDirection: 'row',
@@ -1187,25 +1232,34 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontWeight: '400',
+    letterSpacing: 0.3,
+    marginBottom: 3,
   },
   salonName: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontFamily: 'CormorantGaramond_700Bold',
+    fontSize: 28,
+    letterSpacing: 0.5,
+    lineHeight: 32,
   },
   actionsSpacer: {
-    width: 10,
+    width: 8,
   },
   actionButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 0,
+  },
+  avatarBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menuBackdrop: {
     position: 'absolute',
@@ -1255,57 +1309,63 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
   },
-  statsContainer: {
+  statsGrid: {
     paddingBottom: 16,
+    gap: 12,
   },
-  statCard: {
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 4,
+    gap: 12,
   },
-  statIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  statInfo: {
+  statCard2: {
     flex: 1,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    shadowColor: '#C8922A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  statLimit: {
-    fontSize: 18,
-    fontWeight: '500',
+  statCard2Wide: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    shadowColor: '#C8922A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  upgradeChip: {
+  statCard2WideInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
+    justifyContent: 'space-between',
   },
-  upgradeChipText: {
-    fontSize: 12,
-    fontWeight: '700',
+  statCard2Icon: {
+    marginBottom: 8,
   },
-  statLabel: {
-    fontSize: 18,
-    fontWeight: '700',
+  statCard2Label: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  statCard2Value: {
+    fontFamily: 'CormorantGaramond_700Bold',
+    fontSize: 36,
+    lineHeight: 40,
+    letterSpacing: -0.5,
     marginBottom: 4,
   },
-  statValue: {
-    fontSize: 25,
-    fontWeight: '700',
-    letterSpacing: -1,
+  statCard2Sub: {
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
   listContent: {
     padding: 20,
@@ -1325,7 +1385,7 @@ const styles = StyleSheet.create({
   customerAvatar: {
     width: 52,
     height: 52,
-    borderRadius: 14,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -1475,6 +1535,22 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
     paddingTop: 18,
+  },
+  genderToggle: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   currencyRow: {
     flexDirection: 'row',

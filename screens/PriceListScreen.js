@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, KeyboardAvoidingView, Alert, ActivityIndicator, Platform, StatusBar,
+  ScrollView, Alert, ActivityIndicator, Platform, StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,7 +58,6 @@ export default function PriceListScreen({ navigation }) {
   const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [focusedKey, setFocusedKey] = useState(null);
   const { theme, isDark } = useTheme();
   const { t } = useContext(LanguageContext);
 
@@ -95,8 +94,13 @@ export default function PriceListScreen({ navigation }) {
     setPrices(prev => ({ ...prev, [key]: value }));
   };
 
+  const allZoneKeys = ZONE_GROUPS.flatMap(g => g.zones.map(z => z.key));
+
   const setPricedCount = () =>
-    Object.values(prices).filter(v => v !== '' && v !== undefined && Number(v) > 0).length;
+    allZoneKeys.filter(k => {
+      const manKey = k + 'Man';
+      return (prices[k] && Number(prices[k]) > 0) || (prices[manKey] && Number(prices[manKey]) > 0);
+    }).length;
 
   return (
     <LinearGradient
@@ -149,15 +153,10 @@ export default function PriceListScreen({ navigation }) {
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
           >
             <Text style={[styles.hint, { color: theme.textSecondary }]}>
               {t('priceListHint')}
@@ -179,54 +178,69 @@ export default function PriceListScreen({ navigation }) {
                 {/* Section card */}
                 <View style={[styles.card, { backgroundColor: theme.glassCard, borderColor: theme.glassCardBorder }]}>
                   {group.zones.map(({ key, icon }, index) => {
-                    const isFocused = focusedKey === key;
-                    const hasPrice = prices[key] !== undefined && prices[key] !== '' && Number(prices[key]) > 0;
+                    const manKey = key + 'Man';
+                    const hasPrice =
+                      (prices[key] && Number(prices[key]) > 0) ||
+                      (prices[manKey] && Number(prices[manKey]) > 0);
                     return (
                       <View
                         key={key}
                         style={[
                           styles.row,
                           index < group.zones.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
-                          isFocused && { backgroundColor: theme.primary + '08' },
                         ]}
                       >
-                        <View style={[
-                          styles.zoneIcon,
-                          { backgroundColor: hasPrice ? theme.primary + '22' : theme.primary + '11' },
-                        ]}>
-                          <Ionicons
-                            name={icon}
-                            size={16}
-                            color={hasPrice ? theme.primary : theme.textTertiary}
-                          />
+                        {/* Zone header */}
+                        <View style={styles.rowHeader}>
+                          <View style={[
+                            styles.zoneIcon,
+                            { backgroundColor: hasPrice ? theme.primary + '22' : theme.primary + '11' },
+                          ]}>
+                            <Ionicons name={icon} size={16} color={hasPrice ? theme.primary : theme.textTertiary} />
+                          </View>
+                          <View style={styles.zoneInfo}>
+                            <Text style={[styles.zoneName, { color: theme.textPrimary }]}>{t(key)}</Text>
+                            {hasPrice && (
+                              <Text style={[styles.zoneSetLabel, { color: theme.primary }]}>✓ set</Text>
+                            )}
+                          </View>
                         </View>
 
-                        <View style={styles.zoneInfo}>
-                          <Text style={[styles.zoneName, { color: theme.textPrimary }]}>
-                            {t(key)}
-                          </Text>
-                          {hasPrice && (
-                            <Text style={[styles.zoneSetLabel, { color: theme.primary }]}>
-                              ✓ set
+                        {/* Dual price inputs */}
+                        <View style={styles.dualPriceRow}>
+                          {/* Woman */}
+                          <View style={styles.genderPriceCol}>
+                            <Text style={[styles.genderPriceLabel, { color: theme.pink }]}>
+                              ♀ {t('genderWoman')}
                             </Text>
-                          )}
-                        </View>
+                            <View style={[styles.priceInputWrapper, { backgroundColor: theme.inputBackground, borderColor: theme.border }]}>
+                              <TextInput
+                                style={[styles.priceInput, { color: theme.textPrimary }]}
+                                value={prices[key] !== undefined ? String(prices[key]) : ''}
+                                onChangeText={val => setPrice(key, val)}
+                                keyboardType="decimal-pad"
+                                placeholder="—"
+                                placeholderTextColor={theme.textTertiary}
+                              />
+                            </View>
+                          </View>
 
-                        <View style={[
-                          styles.priceInputWrapper,
-                          { backgroundColor: theme.inputBackground, borderColor: isFocused ? theme.primary : theme.border },
-                          isFocused && { borderColor: theme.primary, shadowColor: theme.primary, shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-                        ]}>
-                          <TextInput
-                            style={[styles.priceInput, { color: theme.textPrimary }]}
-                            value={prices[key] !== undefined ? String(prices[key]) : ''}
-                            onChangeText={val => setPrice(key, val)}
-                            onFocus={() => setFocusedKey(key)}
-                            onBlur={() => setFocusedKey(null)}
-                            keyboardType="decimal-pad"
-                            placeholder="—"
-                            placeholderTextColor={theme.textTertiary}
-                          />
+                          {/* Man */}
+                          <View style={styles.genderPriceCol}>
+                            <Text style={[styles.genderPriceLabel, { color: theme.blue }]}>
+                              ♂ {t('genderMan')}
+                            </Text>
+                            <View style={[styles.priceInputWrapper, { backgroundColor: theme.inputBackground, borderColor: theme.border }]}>
+                              <TextInput
+                                style={[styles.priceInput, { color: theme.textPrimary }]}
+                                value={prices[manKey] !== undefined ? String(prices[manKey]) : ''}
+                                onChangeText={val => setPrice(manKey, val)}
+                                keyboardType="decimal-pad"
+                                placeholder="—"
+                                placeholderTextColor={theme.textTertiary}
+                              />
+                            </View>
+                          </View>
                         </View>
                       </View>
                     );
@@ -260,7 +274,6 @@ export default function PriceListScreen({ navigation }) {
               </LinearGradient>
             </TouchableOpacity>
           </ScrollView>
-        </KeyboardAvoidingView>
       )}
     </LinearGradient>
   );
@@ -342,10 +355,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     paddingHorizontal: 16,
     paddingVertical: 14,
+    gap: 10,
+  },
+  rowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   zoneIcon: {
@@ -367,12 +384,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  dualPriceRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderPriceCol: {
+    flex: 1,
+    gap: 4,
+  },
+  genderPriceLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
   priceInputWrapper: {
     borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 40,
-    minWidth: 82,
     justifyContent: 'center',
   },
   priceInput: {

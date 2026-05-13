@@ -51,17 +51,19 @@ const IMG_W = 200;
 const IMG_H = 460;
 
 // ── Zone definitions ─────────────────────────────────────────────────────────
-// overlays: [{top, left, w, h}] as fractions (0–1) of IMG_W / IMG_H
+// overlays / overlaysMale: [{top, left, w, h}] as fractions (0–1) of IMG_W / IMG_H
 const ZONE_CONFIG = [
   {
     id: 'face', label: 'Face', zoneKey: 'zoneFace', front: true,
     overlays: [{ top: 0.04, left: 0.38, w: 0.23, h: 0.12 }],
+    overlaysMale: [{ top: 0.07, left: 0.39, w: 0.2, h: 0.105 }],
     radius: 40,
     keywords: ['face', 'лице', 'upper lip', 'горна устна', 'chin', 'брада', 'forehead', 'cheek', 'eyebrow', 'facial'],
   },
   {
     id: 'neck', label: 'Neck', zoneKey: 'zoneNeck', front: true,
     overlays: [{ top: 0.152, left: 0.44, w: 0.12, h: 0.050 }],
+    overlaysMale: [{ top: 0.175, left: 0.41, w: 0.16, h: 0.035 }],
     radius: 8,
     keywords: ['neck', 'врат', 'throat', 'шия'],
   },
@@ -70,6 +72,10 @@ const ZONE_CONFIG = [
     overlays: [
       { top: 0.21, left: 0.265, w: 0.1, h: 0.05 },
       { top: 0.21, left: 0.635, w: 0.1, h: 0.05 },
+    ],
+    overlaysMale: [
+      { top: 0.22, left: 0.22, w: 0.115, h: 0.07 },
+      { top: 0.215, left: 0.660, w: 0.115, h: 0.07 },
     ],
     radius: 12,
     keywords: ['armpit', 'armpits', 'подмишниц', 'underarm'],
@@ -80,6 +86,10 @@ const ZONE_CONFIG = [
       { top: 0.255, left: 0.23, w: 0.1, h: 0.12 },
       { top: 0.255, left: 0.670, w: 0.1, h: 0.12 },
     ],
+    overlaysMale: [
+      { top: 0.265, left: 0.155, w: 0.135, h: 0.11 },
+      { top: 0.265, left: 0.71, w: 0.135, h: 0.11 },
+    ],
     radius: 14,
     keywords: ['arms', 'ръце', 'arm', 'upper arm', 'whole arm', 'full arm'],
   },
@@ -89,24 +99,31 @@ const ZONE_CONFIG = [
       { top: 0.375, left: 0.21, w: 0.1, h: 0.14 },
       { top: 0.375, left: 0.690, w: 0.1, h: 0.14 },
     ],
+    overlaysMale: [
+      { top: 0.375, left: 0.12, w: 0.125, h: 0.13 },
+      { top: 0.375, left: 0.75, w: 0.125, h: 0.13 },
+    ],
     radius: 14,
     keywords: ['half arms', 'половин ръце', 'forearm', 'lower arm', 'half arm'],
   },
   {
     id: 'chest', label: 'Chest', zoneKey: 'zoneChest', front: true,
     overlays: [{ top: 0.235, left: 0.33, w: 0.35, h: 0.1 }],
+    overlaysMale: [{ top: 0.205, left: 0.32, w: 0.355, h: 0.11 }],
     radius: 14,
     keywords: ['chest', 'гърди', 'breast', 'decolletage'],
   },
   {
     id: 'abdomen', label: 'Abdomen', zoneKey: 'zoneAbdomen', front: true,
     overlays: [{ top: 0.33, left: 0.35, w: 0.3, h: 0.1 }],
+    overlaysMale: [{ top: 0.32, left: 0.31, w: 0.355, h: 0.115 }],
     radius: 12,
     keywords: ['abdomen', 'корем', 'stomach', 'belly', 'abs'],
   },
   {
     id: 'bikini', label: 'Bikini / Intimate', zoneKey: 'zoneIntimate', front: true,
     overlays: [{ top: 0.415, left: 0.325, w: 0.35, h: 0.08 }],
+    overlaysMale: [{ top: 0.44, left: 0.315, w: 0.36, h: 0.09 }],
     radius: 10,
     keywords: ['intimat', 'интим', 'bikini', 'бикини', 'brazilian', 'pubic'],
   },
@@ -115,6 +132,10 @@ const ZONE_CONFIG = [
     overlays: [
       { top: 0.455, left: 0.32, w: 0.16, h: 0.185 },
       { top: 0.455, left: 0.52, w: 0.16, h: 0.185 },
+    ],
+    overlaysMale: [
+      { top: 0.52, left: 0.290, w: 0.185, h: 0.15 },
+      { top: 0.52, left: 0.54, w: 0.185, h: 0.15 },
     ],
     radius: 12,
     keywords: ['legs', 'крака', 'leg', 'thigh', 'whole leg', 'full leg'],
@@ -125,24 +146,31 @@ const ZONE_CONFIG = [
       { top: 0.670, left: 0.35, w: 0.12, h: 0.20 },
       { top: 0.670, left: 0.53, w: 0.12, h: 0.20 },
     ],
+    overlaysMale: [
+      { top: 0.69, left: 0.28, w: 0.145, h: 0.20 },
+      { top: 0.69, left: 0.58, w: 0.145, h: 0.20 },
+    ],
     radius: 12,
     keywords: ['half legs', 'половин крака', 'half leg', 'calf', 'calves', 'shin', 'lower leg'],
   },
   {
     id: 'back', label: 'Back', zoneKey: 'zoneBack', back: true,
     overlays: [{ top: 0.205, left: 0.337, w: 0.33, h: 0.12 }],
+    overlaysMale: [{ top: 0.21, left: 0.285, w: 0.44, h: 0.145 }],
     radius: 14,
     keywords: ['back', 'гръб', 'upper back'],
   },
   {
     id: 'lower_back', label: 'Lower Back', zoneKey: 'zoneLowerBack', back: true,
     overlays: [{ top: 0.32, left: 0.36, w: 0.29, h: 0.09 }],
+    overlaysMale: [{ top: 0.35, left: 0.335, w: 0.34, h: 0.08 }],
     radius: 12,
     keywords: ['lower back', 'кръст', 'lumbar'],
   },
   {
     id: 'glutes', label: 'Glutes', zoneKey: 'zoneGlutes', back: true,
     overlays: [{ top: 0.4, left: 0.33, w: 0.35, h: 0.10 }],
+    overlaysMale: [{ top: 0.43, left: 0.325, w: 0.355, h: 0.11 }],
     radius: 14,
     keywords: ['glute', 'седалищ', 'дупе', 'buttock', 'butt'],
   },
@@ -205,6 +233,7 @@ export default function BodyMapScreen({ route, navigation }) {
 
   const [localProgress, setLocalProgress] = useState(initialProgress);
   const [isFront, setIsFront] = useState(true);
+  const [bodyGender, setBodyGender] = useState(customer?.gender || 'woman');
   const [selectedId, setSelectedId] = useState(null);
   const [faceSubzone, setFaceSubzone] = useState('zoneFace');
   const [intimateSubzone, setIntimateSubzone] = useState('zoneIntimate');
@@ -220,6 +249,8 @@ export default function BodyMapScreen({ route, navigation }) {
   const [newFrequency, setNewFrequency] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [newNotes, setNewNotes] = useState('');
+  const [newGender, setNewGender] = useState('woman');
+  const [newZoneKey, setNewZoneKey] = useState('');
   const [priceList, setPriceList] = useState({});
   const [selectedTreatment, setSelectedTreatment] = useState(null);
   const [skinType, setSkinType] = useState(null);
@@ -248,6 +279,8 @@ export default function BodyMapScreen({ route, navigation }) {
       : selectedId === 'bikini' ? intimateSubzone
       : zone?.zoneKey;
     setNewZone(activeZoneKey ? t(activeZoneKey) : '');
+    setNewZoneKey(activeZoneKey || '');
+    setNewGender(bodyGender);
     setNewPower(data?.lastPower ? String(data.lastPower) : '');
     setNewPulseWidth('');
     setNewFrequency('');
@@ -296,7 +329,7 @@ export default function BodyMapScreen({ route, navigation }) {
       await api.post('/appointments', {
         customerId: customer._id,
         date: newDate.toISOString(),
-        treatments: [{ zone: newZone.trim(), power, pulseWidth, frequency, price }],
+        treatments: [{ zone: newZone.trim(), power, pulseWidth, frequency, price, gender: newGender || 'woman' }],
         notes: newNotes.trim() || undefined,
         skinType: skinType || undefined,
         laserType: laserType || undefined,
@@ -381,22 +414,45 @@ export default function BodyMapScreen({ route, navigation }) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Front / Back toggle */}
-        <View style={[styles.toggle, {
-          backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
-          borderColor: theme.border,
-        }]}>
-          {[true, false].map(front => (
-            <TouchableOpacity key={String(front)}
-              style={[styles.toggleBtn, (isFront === front) && { backgroundColor: theme.primary }]}
-              onPress={() => { setIsFront(front); setSelectedId(null); setFaceSubzone('zoneFace'); setIntimateSubzone('zoneIntimate'); }}>
-              <Text style={[styles.toggleText, {
-                color: (isFront === front) ? (isDark ? '#111' : '#fff') : theme.textSecondary,
-              }]}>
-                {front ? t('frontView') : t('backView')}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        {/* Front / Back toggle + Gender toggle row */}
+        <View style={styles.togglesRow}>
+          <View style={[styles.toggle, styles.toggleFlex, {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+            borderColor: theme.border,
+          }]}>
+            {[true, false].map(front => (
+              <TouchableOpacity key={String(front)}
+                style={[styles.toggleBtn, (isFront === front) && { backgroundColor: theme.primary }]}
+                onPress={() => { setIsFront(front); setSelectedId(null); setFaceSubzone('zoneFace'); setIntimateSubzone('zoneIntimate'); }}>
+                <Text style={[styles.toggleText, {
+                  color: (isFront === front) ? (isDark ? '#111' : '#fff') : theme.textSecondary,
+                }]}>
+                  {front ? t('frontView') : t('backView')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={[styles.toggle, styles.toggleFlex, {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+            borderColor: theme.border,
+          }]}>
+            {['woman', 'man'].map(g => {
+              const active = bodyGender === g;
+              const color = g === 'woman' ? theme.pink : theme.blue;
+              return (
+                <TouchableOpacity key={g}
+                  style={[styles.toggleBtn, active && { backgroundColor: color }]}
+                  onPress={() => setBodyGender(g)}>
+                  <Text style={[styles.toggleText, {
+                    color: active ? (isDark ? '#111' : '#fff') : theme.textSecondary,
+                  }]}>
+                    {g === 'woman' ? '♀' : '♂'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* Legend */}
@@ -411,13 +467,14 @@ export default function BodyMapScreen({ route, navigation }) {
         <View style={[styles.mapWrapper, { width: IMG_W, height: IMG_H }]}>
           <Image
             source={isFront
-              ? require('../assets/body-front.png')
-              : require('../assets/body-back.png')}
+              ? (bodyGender === 'man' ? require('../assets/body-front-man.png') : require('../assets/body-front.png'))
+              : (bodyGender === 'man' ? require('../assets/body-back-man.png') : require('../assets/body-back.png'))}
             style={{ width: IMG_W, height: IMG_H }}
             resizeMode="contain"
           />
-          {activeZones.map(zone =>
-            zone.overlays.map((ov, i) => (
+          {activeZones.map(zone => {
+            const ovs = (bodyGender === 'man' && zone.overlaysMale) ? zone.overlaysMale : zone.overlays;
+            return ovs.map((ov, i) => (
               <TouchableOpacity
                 key={`${zone.id}-${i}`}
                 activeOpacity={0.75}
@@ -434,8 +491,8 @@ export default function BodyMapScreen({ route, navigation }) {
                   borderColor: getOverlayBorder(zone.id),
                 }}
               />
-            ))
-          )}
+            ));
+          })}
         </View>
 
         {!selectedId && (
@@ -752,6 +809,37 @@ export default function BodyMapScreen({ route, navigation }) {
                 />
               </View>
 
+              {/* Gender toggle */}
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('genderLabel')}</Text>
+              <View style={styles.genderToggle}>
+                {['woman', 'man'].map((g) => {
+                  const active = newGender === g;
+                  const color = g === 'woman' ? theme.pink : theme.blue;
+                  return (
+                    <TouchableOpacity
+                      key={g}
+                      style={[styles.genderBtn, {
+                        backgroundColor: active ? color + '22' : (isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground),
+                        borderColor: active ? color : theme.border,
+                      }]}
+                      onPress={() => {
+                        setNewGender(g);
+                        if (newZoneKey) {
+                          const priceKey = g === 'man' ? newZoneKey + 'Man' : newZoneKey;
+                          const val = priceList[priceKey];
+                          setNewPrice(val !== undefined && val !== '' && Number(val) > 0 ? String(val) : '');
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.genderBtnText, { color: active ? color : theme.textSecondary }]}>
+                        {g === 'woman' ? `♀ ${t('genderWoman')}` : `♂ ${t('genderMan')}`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               {/* Date field */}
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('date')}</Text>
               <TouchableOpacity
@@ -941,7 +1029,9 @@ export default function BodyMapScreen({ route, navigation }) {
               </View>
 
               {/* Price field */}
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{t('price')}</Text>
+              <Text style={[styles.fieldLabel, { color: newGender === 'man' ? theme.blue : theme.pink }]}>
+                {newGender === 'man' ? `♂ ${t('price')}` : `♀ ${t('price')}`}
+              </Text>
               <View style={[styles.fieldInput, {
                 backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : theme.inputBackground,
                 borderColor: theme.border,
@@ -1084,6 +1174,8 @@ const styles = StyleSheet.create({
 
   scrollContent: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 48, paddingTop: 20 },
 
+  togglesRow: { flexDirection: 'row', gap: 10, marginBottom: 16, width: '100%' },
+  toggleFlex: { flex: 1, marginBottom: 0 },
   toggle: { flexDirection: 'row', borderRadius: 14, borderWidth: 1, padding: 3, marginBottom: 16 },
   toggleBtn: { flex: 1, paddingVertical: 9, borderRadius: 11, alignItems: 'center' },
   toggleText: { fontSize: 14, fontWeight: '700' },
@@ -1208,6 +1300,9 @@ const styles = StyleSheet.create({
   laserRow: { flexDirection: 'row', gap: 12, marginBottom: 4, width: '100%' },
   laserChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
   laserChipText: { fontSize: 14, fontWeight: '700' },
+  genderToggle: { flexDirection: 'row', gap: 10, marginBottom: 4 },
+  genderBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, borderRadius: 12, borderWidth: 1.5 },
+  genderBtnText: { fontSize: 14, fontWeight: '700' },
   reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, width: '100%', marginBottom: 4 },
   reactionChip: { flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
   reactionChipText: { fontSize: 12, fontWeight: '700' },
